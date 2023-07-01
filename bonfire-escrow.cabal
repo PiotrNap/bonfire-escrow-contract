@@ -1,35 +1,70 @@
 Cabal-Version:      2.4
 Name:               bonfire-escrow
 Version:            1.0.0.0
-Author:              Gimbalabs
-Maintainer:          jdunseith@gimblabs.io
+Author:              Gimbalabs contributors
+Maintainer:          jdunseith@gimblabs.io, p.napierala@mailfence.com
 Build-Type:          Simple
 License:             Apache-2.0
 License-files:       LICENSE
 
+Flag unexpected_thunks
+  Description:   Turn on unexpected thunks checks
+  Default:       False
+
+common base
+  build-depends: base >= 4.14 && < 4.15
+
+common project-config
+  default-language:     Haskell2010
+
+  default-extensions:   NoImplicitPrelude
+                        OverloadedStrings
+
+  ghc-options:          -Wall
+                        -Wcompat
+                        -Wincomplete-record-updates
+                        -Wpartial-fields
+                        -Wredundant-constraints
+                        -Wincomplete-uni-patterns
+                        -Wmissing-export-lists
+                        -Wpartial-fields
+                        -Wmissing-deriving-strategies
+                        -Wunused-packages
+
+common maybe-Win32
+  if os(windows)
+     build-depends:    Win32
+
 library
+  import:               base, project-config
+                      , maybe-Win32
+
+  if flag(unexpected_thunks)
+    cpp-options: -DUNEXPECTED_THUNKS
+
   hs-source-dirs:      src
-  exposed-modules:     Escrow.Demu
-                     , Escrow.EscrowCompiler
+  exposed-modules:     Escrow.EscrowCompiler
                      , Escrow.BonfireDatum
                      , Escrow.BonfireDispute
                      , Escrow.BonfireEscrowContractDraft
                      , Escrow.Types
-  build-depends:       aeson
-                     , base ^>=4.14.1.0
-                     , bytestring
-                     , cardano-api
-                     , containers
-                     , data-default
-                     , playground-common
-                     , plutus-contract
-                     , plutus-ledger
-                     , plutus-ledger-api
-                     , plutus-ledger-constraints
-                     , plutus-tx-plugin
-                     , plutus-tx
-                     , serialise
-                     , text
-  default-language:    Haskell2010
-  ghc-options:         -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
+ 
+   build-depends:     base ^>=4.14.3.0
+                    , aeson
+                    , bytestring
+                    , containers
+                    , cardano-api
+                    , data-default
+                    , plutus-ledger-api
+                    , plutus-script-utils
+                    , plutus-tx-plugin
+                    , plutus-tx
+                    , text
+                    , serialise
+                    , plutus-core
+                    , tagged
+                    , prettyprinter
+                    , cardano-api
 
+
+  ghc-options: -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas

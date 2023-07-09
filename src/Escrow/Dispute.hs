@@ -10,7 +10,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
-module Escrow.BonfireDispute where
+module Escrow.Dispute where
 
 import Escrow.Types
 import Ledger hiding (singleton)
@@ -40,7 +40,7 @@ import PlutusTx.Ratio (numerator)
 -- OR the other way around?
 
 {-# INLINEABLE mkValidator #-}
-mkValidator :: DisputeParam -> BonfireDisputeDatum -> DisputeResult -> ScriptContext -> Bool
+mkValidator :: DisputeParam -> DisputeDatum -> DisputeResult -> ScriptContext -> Bool
 mkValidator dp dd res ctx =
   case res of
     PayAttendee ->
@@ -61,7 +61,7 @@ mkValidator dp dd res ctx =
     inVals = symbols $ valueSpent info
 
     inputHasAdminToken :: Bool
-    inputHasAdminToken = (bonfireAdminToken dp) `elem` inVals
+    inputHasAdminToken = (adminToken dp) `elem` inVals
 
     valueToAttendee :: Value
     valueToAttendee = valuePaidTo info $ bddAttendeePkh dd
@@ -70,7 +70,7 @@ mkValidator dp dd res ctx =
     valueToOrganizer = valuePaidTo info $ bddOrganizerPkh dd
 
     valueToTreasury :: Value
-    valueToTreasury = valuePaidTo info $ bonfireTreasuryPkh dp
+    valueToTreasury = valuePaidTo info $ treasuryPkh dp
 
     -- see https://playground.plutus.iohkdev.io/doc/haddock/plutus-tx/html/PlutusTx-Prelude.html
     -- unsafeRatio does not protect for zero denominator
@@ -104,7 +104,7 @@ mkValidator dp dd res ctx =
 data EscrowTypes
 
 instance ValidatorTypes EscrowTypes where
-  type DatumType EscrowTypes = BonfireDisputeDatum
+  type DatumType EscrowTypes = DisputeDatum
   type RedeemerType EscrowTypes = DisputeResult
 
 typedValidator :: DisputeParam -> TypedValidator EscrowTypes
@@ -113,7 +113,7 @@ typedValidator bp =
     ($$(PlutusTx.compile [||mkValidator||]) `PlutusTx.applyCode` PlutusTx.liftCode bp)
     $$(PlutusTx.compile [||wrap||])
   where
-    wrap = wrapValidator @BonfireDisputeDatum @DisputeResult
+    wrap = wrapValidator @DisputeDatum @DisputeResult
 
 validator :: DisputeParam -> Validator
 validator = validatorScript . typedValidator

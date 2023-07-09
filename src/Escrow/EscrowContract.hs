@@ -10,7 +10,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
-module Escrow.BonfireEscrowContractDraft where
+module Escrow.EscrowContractwhere
 
 import Escrow.Types
 import Ledger hiding (singleton)
@@ -44,54 +44,55 @@ import PlutusTx.Ratio (numerator)
 -- Would that token be created at the time of event CREATION by ORGANIZER?
 -- Or at the time of event BOOKING by ATTENDEE?
 
+-- 1. check if the withdraw is being signed to the beneficiary
+-- 2.
+
 {-# INLINEABLE mkValidator #-}
-mkValidator :: BonfireParam -> BonfireEventEscrowDatum -> EventAction -> ScriptContext -> Bool
+mkValidator :: EscrowParam -> EventEscrowDatum -> EventAction -> ScriptContext -> Bool
 mkValidator bp edatum action ctx =
   case action of
-    AttCancel ->
-      traceIfFalse "Attendee must sign Cancellation Tx" signedByAttendee
+    Cancel ->
+      traceIfFalse "Cancellation Tx must be sign by one of two parties" signedByOneParty
         && traceIfFalse "The Cancellation deadline has passed" beforeCancelDeadline
-        && traceIfFalse "Output must be returned to Attendee" sufficientOutputToAttendee
-    -- allow attendee to cancel up until (STARTTIME - 24 HOURS); but within 24 hours, they forfeit funds
-
-    OrgCancel ->
-      traceIfFalse "Organizer must sign Cancellation Tx" signedByOrganizer
-        && traceIfFalse "Organizer must have Access Token" organizerHasAccessToken
-        && traceIfFalse "Output must be returned to Attendee" sufficientOutputToAttendee
+        && traceIfFalse "Output must be fully returned" sufficientOutputToInitiator
     Complete ->
-      traceIfFalse "Organizer must sign Cancellation Tx" signedByOrganizer
-        && traceIfFalse "Organizer must have Access Token" organizerHasAccessToken
-        && traceIfFalse "It is too early to collect" afterDisputeDeadline
-        && traceIfFalse "Output must be sent to Organizer" sufficientOutputToOrganizer
-    Dispute ->
-      traceIfFalse "Attendee must sign Cancellation Tx" signedByAttendee
-        && traceIfFalse "Must pay to Dispute Contract" sufficientOutputToDisputeContract
-        && traceIfFalse "It is too late for you to Dispute!" beforeDisputeDeadline
+      traceIfFalse "Beneficiary must sign the withdraw Tx" signedByBeneficiary
+        && traceIfFalse "It is too early to collect" beforeReleaseDate
+        && traceIfFalse "Output must be fully " sufficientOutputToInitiator
+
+    -- OrgCancel ->
+    --   traceIfFalse "Organizer must sign Cancellation Tx" signedByOrganizer
+    --     && traceIfFalse "Organizer must have Access Token" organizerHasAccessToken
+    --     && traceIfFalse "Output must be returned to Attendee" sufficientOutputToAttendee
+    -- Dispute ->
+    --   traceIfFalse "Attendee must sign Cancellation Tx" signedByAttendee
+    --     && traceIfFalse "Must pay to Dispute Contract" sufficientOutputToDisputeContract
+    --     && traceIfFalse "It is too late for you to Dispute!" beforeDisputeDeadline
   where
+    --- Variables ---
+
     info :: TxInfo
     info = scriptContextTxInfo ctx
 
-    -- Handle Signatures
-    signedByAttendee :: Bool
-    signedByAttendee = txSignedBy info $ attendeePkh edatum
-
-    signedByOrganizer :: Bool
-    signedByOrganizer = txSignedBy info $ organizerPkh edatum
-
-    -- Handle Time
-    disputeDeadline :: POSIXTime
-    disputeDeadline = eventStartTime edatum + 3600000
-    -- 3600000 milliseconds = 1 hour
-
     cancelDeadline :: POSIXTime
-    cancelDeadline = eventStartTime edatum - 86400000
-    -- 86400000 milliseconds = 1 day
+    cancelDeadline = cancelDeadline edatum
+
+    --- Functions ---
+
+    signedByBeneficiary :: Bool
+    signedByOrganizer = txSignedBy info $ beneficiaryPkh edatum
+
+    signedByBenefactor :: Bool
+    signedByOrganizer = txSignedBy info $ benefactorPkh edatum
+
+    signedByOneParty :: Bool
+    signedByOneParty =  signedByBeneficiary || signedByBenefactor
 
     beforeCancelDeadline :: Bool
-    beforeCancelDeadline = contains (to cancelDeadline) $ txInfoValidRange info
+    beforeCancelDeadline = contains (to cancelDeadline) $ txInfoValidRange edatum
 
-    afterDisputeDeadline :: Bool
-    afterDisputeDeadline = contains (from disputeDeadline) $ txInfoValidRange info
+    afterReleaseDate :: Bool
+    afterReleaseDate = contains (from releaseDate) $ txInfoValidRange info
 
     beforeDisputeDeadline :: Bool
     beforeDisputeDeadline = not afterDisputeDeadline
@@ -133,6 +134,8 @@ mkValidator bp edatum action ctx =
                && getLovelace (fromValue valueToTreasury) >= 2000000
            )
 
+    -- vvv This isn't good, what if the utxo has a bit less in it... say user sent something, event didn't got booked, and now organizer 
+    -- vvv can't even withdraw...
     -- gimbal costs can always stick to 95% / 5%
     gimbalOutputsCorrect :: Bool
     gimbalOutputsCorrect =
@@ -154,16 +157,16 @@ mkValidator bp edatum action ctx =
 data EscrowTypes
 
 instance ValidatorTypes EscrowTypes where
-  type DatumType EscrowTypes = BonfireEventEscrowDatum
+  type DatumType EscrowTypes = EventEscrowDatum
   type RedeemerType EscrowTypes = EventAction
 
-typedValidator :: BonfireParam -> TypedValidator EscrowTypes
+typedValidator :: EscrowParam -> TypedValidator EscrowTypes
 typedValidator bp =
   mkTypedValidator @EscrowTypes
     ($$(PlutusTx.compile [||mkValidator||]) `PlutusTx.applyCode` PlutusTx.liftCode bp)
     $$(PlutusTx.compile [||wrap||])
   where
-    wrap = wrapValidator @BonfireEventEscrowDatum @EventAction
+    wrap = wrapValidator @EventEscrowDatum @EventAction
 
-validator :: BonfireParam -> Validator
+validator :: EscrowParam -> Validator
 validator = validatorScript . typedValidator

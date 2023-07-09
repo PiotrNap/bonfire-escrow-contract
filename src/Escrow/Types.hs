@@ -9,62 +9,59 @@ import qualified PlutusTx
 import PlutusTx.Prelude hiding (Semigroup (..), unless)
 import Prelude (Show (..))
 
-data BonfireParam = BonfireParam
-  { organizerAccessSymbol :: !CurrencySymbol,
-    disputeContract :: !ValidatorHash,
-    ptSymbol :: !CurrencySymbol,
-    ptName :: !TokenName,
+data EscrowParam = EscrowParam
+  {
+    organizerAccessSymbol :: !CurrencySymbol,
     treasuryPkh :: !PubKeyHash
+    -- ptSymbol :: !CurrencySymbol,
+    -- ptName :: !TokenName,
+    betaTesterPolicyId: !PolicyId
   }
 
-PlutusTx.makeLift ''BonfireParam
+PlutusTx.makeLift ''EscrowParam
 
-data BonfireEventEscrowDatum = BonfireEventEscrowDatum
-  { organizerReference :: !BuiltinByteString, -- reference to our Bonfire DB (still thinking about how exactly to use this)
-    eventReference :: !BuiltinByteString, -- reference to our Bonfire DB (still thinking about how exactly to use this)
-    organizerPkh :: !PubKeyHash,
-    attendeePkh :: !PubKeyHash,
-    eventCostLovelace :: !Integer,
-    eventCostPaymentToken :: !Integer, -- In V0, "gimbal"
-    eventStartTime :: !POSIXTime
+data EventEscrowDatum = EventEscrowDatum
+  {
+    beneficiaryPkh :: !PubKeyHash,
+    benefactorPkh :: !PubKeyHash,
+    releaseDate :: !POSIXTime
+    paymentAssets :: 
   }
-
--- do we need event end time?
 
 -- think about leveled auth/access NFTs for Organizers that unlock new payment tiers... (2022-04-06)
 -- Organizer's scheduling window is an account preference stored in Bonfire DB
 
-PlutusTx.unstableMakeIsData ''BonfireEventEscrowDatum
+PlutusTx.unstableMakeIsData ''EventEscrowDatum
 
-data EventAction = AttCancel | OrgCancel | Complete | Dispute
+data EventAction = Cancel | Complete -- ?? | Dispute
   deriving (Show)
 
-PlutusTx.makeIsDataIndexed ''EventAction [('AttCancel, 0), ('OrgCancel, 1), ('Complete, 2), ('Dispute, 3)]
+PlutusTx.makeIsDataIndexed ''EventAction [('Cancel, 0), ('Complete, 1)] -- ('Dispute, 3)]
 PlutusTx.makeLift ''EventAction
 
--- Dispute Contract
---
-data DisputeParam = DisputeParam
-  { bonfireAdminToken :: !CurrencySymbol,
-    dpPtSymbol :: !CurrencySymbol,
-    dpPtName :: !TokenName,
-    bonfireTreasuryPkh :: !PubKeyHash
-  }
+---- Dispute Contract
+----
+--data DisputeParam = DisputeParam
+--  { adminToken :: !CurrencySymbol,
+--    dpPtSymbol :: !CurrencySymbol,
+--    dpPtName :: !TokenName,
+--    treasuryPkh :: !PubKeyHash
+--  }
 
-PlutusTx.makeLift ''DisputeParam
+-- PlutusTx.makeLift ''DisputeParam
 
-data BonfireDisputeDatum = BonfireDisputeDatum
-  { bddOrganizerPkh :: !PubKeyHash,
-    bddAttendeePkh :: !PubKeyHash,
-    bddEventCostLovelace :: !Integer,
-    bddEventCostPaymentToken :: !Integer,
-    bddEventID :: !BuiltinByteString,
-    bddDisputeID :: !BuiltinByteString
-  }
+-- data DisputeDatum = DisputeDatum
+--   { bddOrganizerPkh :: !PubKeyHash,
+--     bddAttendeePkh :: !PubKeyHash,
+--     bddEventCostLovelace :: !Integer,
+--     bddEventCostPaymentToken :: !Integer,
+--     bddEventID :: !BuiltinByteString,
+--     bddDisputeID :: !BuiltinByteString
+--   }
 
-PlutusTx.unstableMakeIsData ''BonfireDisputeDatum
+-- PlutusTx.unstableMakeIsData ''DisputeDatum
 
-data DisputeResult = PayAttendee | PayOrganizer | Split
+-- data DisputeResult = PayAttendee | PayOrganizer | Split
 
-PlutusTx.makeIsDataIndexed ''DisputeResult [('PayAttendee, 0), ('PayOrganizer, 1), ('Split, 2)]
-PlutusTx.makeLift ''DisputeResult
+-- PlutusTx.makeIsDataIndexed ''DisputeResult [('PayAttendee, 0), ('PayOrganizer, 1), ('Split, 2)]
+-- PlutusTx.makeLift ''DisputeResult

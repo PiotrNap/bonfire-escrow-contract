@@ -8,14 +8,16 @@ repository cardano-haskell-packages
     bcec67e8e99cabfa7764d75ad9b158d72bfacf70ca1d0ec8bc6b4406d1bf8413
     c00aae8461a256275598500ea0e187588c35a5d5d7454fb57eac18d9edb86a56
     d4a35cd3121aa00d18544bb0ac01c3e1691d618f462c46129271bccf39f7e8ee
+
 -- See CONTRIBUTING.adoc for how to update index-state
 index-state: 2022-11-14T00:20:02Z
+
 -- See CONTRIBUTING.adoc for how to update index-state
 index-state:
   , hackage.haskell.org 2022-11-14T00:20:02Z
   , cardano-haskell-packages 2022-11-17T04:56:26Z
 
-packages: bonfire-escrow.cabal
+packages: escrow.cabal
 
 -- We never, ever, want this.
 write-ghc-environment-files: never
@@ -138,3 +140,4 @@ source-repository-package
       libs/small-steps
       libs/small-steps-test
       libs/non-integral
+

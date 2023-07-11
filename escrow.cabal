@@ -1,8 +1,8 @@
 Cabal-Version:      2.4
-Name:               bonfire-escrow
+Name:               escrow-contract
 Version:            1.0.0.0
 Author:              Gimbalabs contributors
-Maintainer:          jdunseith@gimblabs.io, p.napierala@mailfence.com
+Maintainer:          p.napierala@mailfence.com
 Build-Type:          Simple
 License:             Apache-2.0
 License-files:       LICENSE
@@ -43,13 +43,14 @@ library
     cpp-options: -DUNEXPECTED_THUNKS
 
   hs-source-dirs:      src
+
   exposed-modules:     Escrow.EscrowCompiler
                      , Escrow.BonfireDatum
                      , Escrow.BonfireDispute
                      , Escrow.BonfireEscrowContractDraft
                      , Escrow.Types
  
-   build-depends:     base ^>=4.14.3.0
+  build-depends:       base ^>=4.14.3.0
                     , aeson
                     , bytestring
                     , containers

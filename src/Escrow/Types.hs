@@ -11,11 +11,8 @@ import Prelude (Show (..))
 
 data EscrowParam = EscrowParam
   {
-    organizerAccessSymbol :: !CurrencySymbol,
     treasuryPkh :: !PubKeyHash
-    -- ptSymbol :: !CurrencySymbol,
-    -- ptName :: !TokenName,
-    betaTesterPolicyId: !PolicyId
+    betaTesterToken: !CurrencySymbol
   }
 
 PlutusTx.makeLift ''EscrowParam
@@ -25,7 +22,8 @@ data EventEscrowDatum = EventEscrowDatum
     beneficiaryPkh :: !PubKeyHash,
     benefactorPkh :: !PubKeyHash,
     releaseDate :: !POSIXTime
-    paymentAssets :: 
+    cancelDeadline :: !POSIXTime
+    paymentAssets :: [Value]
   }
 
 -- think about leveled auth/access NFTs for Organizers that unlock new payment tiers... (2022-04-06)

@@ -10,7 +10,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
-module Escrow.EscrowContractwhere
+module Escrow.EscrowContract where
 
 import Escrow.Types
 import Ledger hiding (singleton)
@@ -36,20 +36,20 @@ import PlutusTx.Prelude as Plutus
   )
 import PlutusTx.Ratio (numerator)
 
--- IF we create a separate "Dispute Contract", should its ValidatorHash be referenced here,
--- OR the other way around?
-
--- How do we guard against double-booking an event?
--- Does a token play a role in representing a single event?
--- Would that token be created at the time of event CREATION by ORGANIZER?
--- Or at the time of event BOOKING by ATTENDEE?
-
--- 1. check if the withdraw is being signed to the beneficiary
--- 2.
+--  check if the withdraw is being signed to the beneficiary:  v/
+--  allow cancellation only before the deadline: v/
+--  don't charge a fee during cancellation:
+--  withdraw possible after release date:  v/
+--  withdraw tx made by the benefactor: v/
+--  check if benefactor has Beta-Tester token: v/
+--  if user holds a beta tester token, don't charge any fee:
+--  ...otherwise charge a fee: 
+--  add a way for service provider to withdraw utxo's older than 1 year: 
+--  add a 1.5% fee or a 1.5 ADA fee if it's less than that
 
 {-# INLINEABLE mkValidator #-}
 mkValidator :: EscrowParam -> EventEscrowDatum -> EventAction -> ScriptContext -> Bool
-mkValidator bp edatum action ctx =
+mkValidator param datum action ctx =
   case action of
     Cancel ->
       traceIfFalse "Cancellation Tx must be sign by one of two parties" signedByOneParty
@@ -57,80 +57,97 @@ mkValidator bp edatum action ctx =
         && traceIfFalse "Output must be fully returned" sufficientOutputToInitiator
     Complete ->
       traceIfFalse "Beneficiary must sign the withdraw Tx" signedByBeneficiary
-        && traceIfFalse "It is too early to collect" beforeReleaseDate
-        && traceIfFalse "Output must be fully " sufficientOutputToInitiator
-
-    -- OrgCancel ->
-    --   traceIfFalse "Organizer must sign Cancellation Tx" signedByOrganizer
-    --     && traceIfFalse "Organizer must have Access Token" organizerHasAccessToken
-    --     && traceIfFalse "Output must be returned to Attendee" sufficientOutputToAttendee
-    -- Dispute ->
-    --   traceIfFalse "Attendee must sign Cancellation Tx" signedByAttendee
-    --     && traceIfFalse "Must pay to Dispute Contract" sufficientOutputToDisputeContract
-    --     && traceIfFalse "It is too late for you to Dispute!" beforeDisputeDeadline
+        && traceIfFalse "It is too early to collect" afterReleaseDate
+        && traceIfFalse "Output must be fully withdrawn" sufficientOutputToInitiator
   where
     --- Variables ---
-
+    
     info :: TxInfo
     info = scriptContextTxInfo ctx
 
     cancelDeadline :: POSIXTime
-    cancelDeadline = cancelDeadline edatum
+    cancelDeadline = cancelDeadline datum
+
+    totalValueSpent :: Value
+    totalValueSpent = valueSpent info
+
+    inVals :: [CurrencySymbol]
+    inVals = symbols totalValueSpent
+
+    valueToBenefactor :: Value
+    valueToBenefactor = valuePaidTo info $ benefactorPkh datum
+
+    valueToBeneficiary :: Value
+    valueToBeneficiary = valuePaidTo info $ beneficiaryPkh datum
+
+    valueToTreasury :: Value
+    valueToTreasury = valuePaidTo info $ treasuryPkh param
+
+    serviceFee :: Value -> Integer
+    serviceFee = 
+    let
+        totalLovelace = Ada.fromValue totalValueSpent
+    in
+        if totalLovelace > Ada.lovelaceOf 5
+        then Ada.toValue (totalLovelace `div` 100 * 15)
+        else Ada.toValue (Ada.lovelaceOf 1.5)
 
     --- Functions ---
 
     signedByBeneficiary :: Bool
-    signedByOrganizer = txSignedBy info $ beneficiaryPkh edatum
+    signedByOrganizer = txSignedBy info $ beneficiaryPkh datum
 
     signedByBenefactor :: Bool
-    signedByOrganizer = txSignedBy info $ benefactorPkh edatum
+    signedByOrganizer = txSignedBy info $ benefactorPkh datum
 
     signedByOneParty :: Bool
     signedByOneParty =  signedByBeneficiary || signedByBenefactor
 
     beforeCancelDeadline :: Bool
-    beforeCancelDeadline = contains (to cancelDeadline) $ txInfoValidRange edatum
+    beforeCancelDeadline = contains (to cancelDeadline) $ txInfoValidRange datum
 
     afterReleaseDate :: Bool
-    afterReleaseDate = contains (from releaseDate) $ txInfoValidRange info
+    afterReleaseDate = inside (releaseDate datum) (txInfoValidRange info)
 
-    beforeDisputeDeadline :: Bool
-    beforeDisputeDeadline = not afterDisputeDeadline
+    isBetaTesterTokenPresent :: Bool
+    isBetaTesterTokenPresent = (betaTesterToken param) `elem` inVals
 
-    -- Look for Access Token in Input(s)
-    -- Create a list of all CurrencySymbol in tx input
-    inVals :: [CurrencySymbol]
-    inVals = symbols $ valueSpent info
 
-    -- Check that list of CurrencySymbols includes Auth CurrencySymbol
-    organizerHasAccessToken :: Bool
-    organizerHasAccessToken = (organizerAccessSymbol bp) `elem` inVals
+    -- Handle Outputs --
 
-    -- Handle Outputs
-    valueToAttendee :: Value
-    valueToAttendee = valuePaidTo info $ attendeePkh edatum
-
-    valueToOrganizer :: Value
-    valueToOrganizer = valuePaidTo info $ organizerPkh edatum
-
-    valueToTreasury :: Value
-    valueToTreasury = valuePaidTo info $ treasuryPkh bp
-
-    sufficientOutputToAttendee :: Bool
-    sufficientOutputToAttendee =
-      (getLovelace $ fromValue valueToAttendee) >= (eventCostLovelace edatum)
-        && (valueOf valueToAttendee (ptSymbol bp) (ptName bp)) >= (eventCostPaymentToken edatum)
+    -- new
+    let fee = if isBetaTesterTokenPresent then 0 else calculateFee (valueSpent info)
+    allLovelaceReturned = valuePaidTo info (pubKeyHash $ txOutPubKey $ head $ getContinuingOutputs ctx) (Value.singleton Ada.adaSymbol Ada.adaToken 1) >= (totalLovelace - fee)
+    allAssetsReturned = all (\v -> valuePaidTo info (pubKeyHash $ txOutPubKey $ head $ getContinuingOutputs ctx) v >= valueOf v) paymentAssets
+    allReturned = allLovelaceReturned && allAssetsReturned
+    
+    
+    -- old
+    allAssetsReturned = all (\v -> valuePaidTo info (pubKeyHash $ txOutPubKey $ head $ getContinuingOutputs ctx) v >= valueOf v) paymentAssets datum
+    correctFeePaid = let
+        totalLovelace = sum $ fmap (\i -> assetClassValueOf (txOutValue $ txInInfoResolved i) (AssetClass (Ada.adaSymbol, Ada.adaToken))) (txInfoInputs info)
+        requiredFee = if totalLovelace > 5000000 then (totalLovelace `div` 100) * 15 else 1500000
+        in valuePaidTo info treasuryPkh (Value.singleton Ada.adaSymbol Ada.adaToken requiredFee) >= requiredFee
+    
+    --  very old
+    sufficientOutputToInitiator :: Bool
+    sufficientOutputToInitiator =
+      (getLovelace $ fromValue valueToBenefactor) >= (eventCostLovelace datum)
+        && (valueOf valueToBenefactor (ptSymbol param) (ptName param)) >= (eventCostPaymentToken datum)
 
     -- Returns True if at least 2 ADA fee is paid, or if fee is at least 5% of event cost.
     -- This approach allows for options on front-end while maintining guarantee that Organizer gets at least (cost - 2) or (cost * 95%)
     -- The "threshold" for minimum event cost can therefore be "set" to anything.
     -- Think about front-end messaging and how to handle event cost of 35 ada, for example.
+    --
+    -- ...ideally we don't want to rely on any third party to decide how much to charge
+
     lovelaceOutputsCorrect :: Bool
     lovelaceOutputsCorrect =
-      ( fromInteger (getLovelace $ fromValue valueToOrganizer) >= (95 `unsafeRatio` 100) * fromInteger (eventCostLovelace edatum)
-          && fromInteger (getLovelace $ fromValue valueToTreasury) >= (5 `unsafeRatio` 100) * fromInteger (eventCostLovelace edatum)
+      ( fromInteger (getLovelace $ fromValue valueToBeneficiary) >= (95 `unsafeRatio` 100) * fromInteger (eventCostLovelace datum)
+          && fromInteger (getLovelace $ fromValue valueToTreasury) >= (5 `unsafeRatio` 100) * fromInteger (eventCostLovelace datum)
       )
-        || ( getLovelace (fromValue valueToOrganizer) >= (eventCostLovelace edatum - 2000000)
+        || ( getLovelace (fromValue valueToBeneficiary) >= (eventCostLovelace datum - 2000000)
                && getLovelace (fromValue valueToTreasury) >= 2000000
            )
 
@@ -139,20 +156,11 @@ mkValidator bp edatum action ctx =
     -- gimbal costs can always stick to 95% / 5%
     gimbalOutputsCorrect :: Bool
     gimbalOutputsCorrect =
-      fromInteger (valueOf valueToOrganizer (ptSymbol bp) (ptName bp)) >= (95 `unsafeRatio` 100) * fromInteger (eventCostPaymentToken edatum)
-        && fromInteger (valueOf valueToTreasury (ptSymbol bp) (ptName bp)) >= (5 `unsafeRatio` 100) * fromInteger (eventCostPaymentToken edatum)
+      fromInteger (valueOf valueToBeneficiary (ptSymbol param) (ptName param)) >= (95 `unsafeRatio` 100) * fromInteger (eventCostPaymentToken datum)
+        && fromInteger (valueOf valueToTreasury (ptSymbol param) (ptName param)) >= (5 `unsafeRatio` 100) * fromInteger (eventCostPaymentToken datum)
 
-    sufficientOutputToOrganizer :: Bool
-    sufficientOutputToOrganizer = gimbalOutputsCorrect && lovelaceOutputsCorrect
-
-    -- Dispute
-    valueToDisputeContract :: Value
-    valueToDisputeContract = valueLockedBy info (disputeContract bp)
-
-    sufficientOutputToDisputeContract :: Bool
-    sufficientOutputToDisputeContract =
-      (getLovelace $ fromValue valueToDisputeContract) >= (eventCostLovelace edatum)
-        && (valueOf valueToDisputeContract (ptSymbol bp) (ptName bp)) >= (eventCostPaymentToken edatum)
+    sufficientOutputToBeneficiary :: Bool
+    sufficientOutputToBeneficiary = gimbalOutputsCorrect && lovelaceOutputsCorrect
 
 data EscrowTypes
 
@@ -161,9 +169,9 @@ instance ValidatorTypes EscrowTypes where
   type RedeemerType EscrowTypes = EventAction
 
 typedValidator :: EscrowParam -> TypedValidator EscrowTypes
-typedValidator bp =
+typedValidator param =
   mkTypedValidator @EscrowTypes
-    ($$(PlutusTx.compile [||mkValidator||]) `PlutusTx.applyCode` PlutusTx.liftCode bp)
+    ($$(PlutusTx.compile [||mkValidator||]) `PlutusTx.applyCode` PlutusTx.liftCode param)
     $$(PlutusTx.compile [||wrap||])
   where
     wrap = wrapValidator @EventEscrowDatum @EventAction

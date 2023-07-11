@@ -10,8 +10,7 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as SBS
 import Escrow.Dispute
-import Escrow.EscrowContractDraft
-import Escrow.Demu as Demu
+import Escrow.EscrowContract
 import Escrow.Types
 import qualified Ledger
 import Plutus.V1.Ledger.Api (Data (B, Constr, I, List, Map), ToData, toData)
@@ -49,19 +48,13 @@ writeEscrowScript =
           disputeContract = "a6e6fe9543132a112ebd056779b727b0ff4d33ec76eb77a7d1ed21a0"
         }
 
-writeDispute :: IO (Either (FileError ()) ())
-writeDispute =
-  writeValidator "output/plutus-scripts/v3-fix-fees/bonfire-dispute-v3.plutus" $
-    Escrow.Dispute.validator $
-      DisputeParam
-        { adminToken = "0c930db0966a7456dfa21096261a1c5caa7599390b9125212ce48fce",
-          dpPtSymbol = "982ff92902a6d9c547506a9d53f342899857562f30f51c0232fb668e",
-          dpPtName = "bonGimbal",
-          treasuryPkh = "f83d6f9d63a4b9541ad4efca5b48280bffdb8ac4e424c94432788109"
-        }
-
-writeDemuEscrow :: IO (Either (FileError ()) ())
-writeDemuEscrow =
-  writeValidator "demu-validator-script.plutus" $
-    Demu.validator $
-      DemuEscrowParam {adminPkh = "c7991d43ea875b30138986b21dbf011f1a703160470e5774a254d6c6"}
+-- writeDispute :: IO (Either (FileError ()) ())
+-- writeDispute =
+--   writeValidator "output/plutus-scripts/v3-fix-fees/bonfire-dispute-v3.plutus" $
+--     Escrow.Dispute.validator $
+--       DisputeParam
+--         { adminToken = "0c930db0966a7456dfa21096261a1c5caa7599390b9125212ce48fce",
+--           dpPtSymbol = "982ff92902a6d9c547506a9d53f342899857562f30f51c0232fb668e",
+--           dpPtName = "bonGimbal",
+--           treasuryPkh = "f83d6f9d63a4b9541ad4efca5b48280bffdb8ac4e424c94432788109"
+--         }

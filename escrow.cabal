@@ -50,23 +50,20 @@ library
                      , Escrow.EscrowContract
                      , Escrow.Types
  
-  build-depends:       base ^>=4.14.3.0
-                    , aeson
-                    , bytestring
-                    , containers
-                    , cardano-api
-                    , data-default
-                    , plutus-ledger-api
-                    , plutus-script-utils
-                    , plutus-tx-plugin
-                    , plutus-tx
-                    , text
-                    , serialise
-                    , plutus-core
-                    , tagged
-                    , plutus-ledger
-                    , prettyprinter
-                    , cardano-api
-
+  build-depends:      aeson
+                     , base ^>=4.14.1.0
+                     , bytestring
+                     , cardano-api
+                     , containers
+                     , data-default
+                     , playground-common
+                     , plutus-contract
+                     , plutus-ledger
+                     , plutus-ledger-api
+                     , plutus-ledger-constraints
+                     , plutus-tx-plugin
+                     , plutus-tx
+                     , serialise
+                     , text
 
   ghc-options: -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas

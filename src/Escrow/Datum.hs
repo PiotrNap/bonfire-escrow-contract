@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Escrow.BonfireDatum
+module Escrow.Datum
   ( writeJSON,
     writeUnit,
     writeExampleDatum,
@@ -15,9 +15,9 @@ import Escrow.Types
 import PlutusTx (Data (..))
 import qualified PlutusTx
 
-exampleEvent :: BonfireEventEscrowDatum
+exampleEvent :: EscrowDatum
 exampleEvent =
-  BonfireEventEscrowDatum
+  EscrowDatum
     { organizerReference = "jamesLocalOrganizer",
       eventReference = "16juneStartNow",
       organizerPkh = "1a94b77705e9a1420655e6d952f133f85ccb514e7b68150e84c2ab7b",
@@ -27,15 +27,15 @@ exampleEvent =
       eventStartTime = 1655735145000
     }
 
-exampleDispute :: BonfireDisputeDatum
-exampleDispute = BonfireDisputeDatum
-  { bddOrganizerPkh = "1a94b77705e9a1420655e6d952f133f85ccb514e7b68150e84c2ab7b",
-    bddAttendeePkh = "8ad46253eecbf732f01713bf78a5f7da8a373436c8dd42af01592062",
-    bddEventCostLovelace = 35000000,
-    bddEventCostPaymentToken = 4000000,
-    bddEventID = "16juneStartNow",
-    bddDisputeID = "secondFIGHT"
-  }
+-- exampleDispute :: BonfireDisputeDatum
+-- exampleDispute = BonfireDisputeDatum
+--   { bddOrganizerPkh = "1a94b77705e9a1420655e6d952f133f85ccb514e7b68150e84c2ab7b",
+--     bddAttendeePkh = "8ad46253eecbf732f01713bf78a5f7da8a373436c8dd42af01592062",
+--     bddEventCostLovelace = 35000000,
+--     bddEventCostPaymentToken = 4000000,
+--     bddEventID = "16juneStartNow",
+--     bddDisputeID = "secondFIGHT"
+--   }
 
 dataToScriptData :: Data -> ScriptData
 dataToScriptData (Constr n xs) = ScriptDataConstructor n $ dataToScriptData <$> xs

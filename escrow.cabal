@@ -45,9 +45,9 @@ library
   hs-source-dirs:      src
 
   exposed-modules:     Escrow.EscrowCompiler
-                     , Escrow.BonfireDatum
-                     , Escrow.BonfireDispute
-                     , Escrow.BonfireEscrowContractDraft
+                     , Escrow.Datum
+                     , Escrow.Dispute
+                     , Escrow.EscrowContract
                      , Escrow.Types
  
   build-depends:       base ^>=4.14.3.0
@@ -64,6 +64,7 @@ library
                     , serialise
                     , plutus-core
                     , tagged
+                    , plutus-ledger
                     , prettyprinter
                     , cardano-api
 

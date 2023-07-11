@@ -52,7 +52,7 @@ mkValidator :: EscrowParam -> EventEscrowDatum -> EventAction -> ScriptContext -
 mkValidator param datum action ctx =
   case action of
     Cancel ->
-      traceIfFalse "Cancellation Tx must be sign by one of two parties" signedByOneParty
+      traceIfFalse "Cancellation Tx must be sign by one of two parties" (signedByBeneficiary || signedByBenefactor)
         && traceIfFalse "The Cancellation deadline has passed" beforeCancelDeadline
         && traceIfFalse "Output must be fully returned" sufficientOutputToInitiator
     Complete ->
@@ -83,16 +83,22 @@ mkValidator param datum action ctx =
     valueToTreasury :: Value
     valueToTreasury = valuePaidTo info $ treasuryPkh param
 
-    serviceFee :: Value -> Integer
+    serviceFee :: Value 
     serviceFee = 
-    let
-        totalLovelace = Ada.fromValue totalValueSpent
-    in
-        if totalLovelace > Ada.lovelaceOf 5
-        then Ada.toValue (totalLovelace `div` 100 * 15)
-        else Ada.toValue (Ada.lovelaceOf 1.5)
+          if isBetaTesterTokenPresent 
+                then Ada.toValue 0
+                else 
+                    let
+                        totalLovelace = Ada.fromValue totalValueSpent
+                    in
+                        if totalLovelace > Ada.lovelaceOf 5
+                        then Ada.lovelaceValueOf (Ada.fromLovelace totalLovelace `div` 100 * 15)
+                        else Ada.lovelaceValueOf (Ada.lovelaceOf 1.5)
 
     --- Functions ---
+
+    isBetaTesterTokenPresent :: Bool
+    isBetaTesterTokenPresent = (betaTesterToken param) `elem` inVals
 
     signedByBeneficiary :: Bool
     signedByOrganizer = txSignedBy info $ beneficiaryPkh datum
@@ -100,27 +106,22 @@ mkValidator param datum action ctx =
     signedByBenefactor :: Bool
     signedByOrganizer = txSignedBy info $ benefactorPkh datum
 
-    signedByOneParty :: Bool
-    signedByOneParty =  signedByBeneficiary || signedByBenefactor
-
     beforeCancelDeadline :: Bool
     beforeCancelDeadline = contains (to cancelDeadline) $ txInfoValidRange datum
 
     afterReleaseDate :: Bool
     afterReleaseDate = inside (releaseDate datum) (txInfoValidRange info)
 
-    isBetaTesterTokenPresent :: Bool
-    isBetaTesterTokenPresent = (betaTesterToken param) `elem` inVals
-
-
     -- Handle Outputs --
 
     -- new
-    let fee = if isBetaTesterTokenPresent then 0 else calculateFee (valueSpent info)
-    allLovelaceReturned = valuePaidTo info (pubKeyHash $ txOutPubKey $ head $ getContinuingOutputs ctx) (Value.singleton Ada.adaSymbol Ada.adaToken 1) >= (totalLovelace - fee)
-    allAssetsReturned = all (\v -> valuePaidTo info (pubKeyHash $ txOutPubKey $ head $ getContinuingOutputs ctx) v >= valueOf v) paymentAssets
+    allLovelaceReturned :: Bool
+    allLovelaceReturned = valuePaidTo info (pubKeyHash $ txOutPubKey $ head $ getContinuingOutputs ctx) (Value.singleton Ada.adaSymbol Ada.adaToken 1) >= (totalLovelace - serviceFee)
+
+    allAssetsReturnedToInitiatior :: Bool
+    allAssetsReturnedToInitiator = all (\v -> valuePaidTo info (pubKeyHash $ txOutPubKey $ head $ getContinuingOutputs ctx) v >= valueOf v) paymentAssets
+
     allReturned = allLovelaceReturned && allAssetsReturned
-    
     
     -- old
     allAssetsReturned = all (\v -> valuePaidTo info (pubKeyHash $ txOutPubKey $ head $ getContinuingOutputs ctx) v >= valueOf v) paymentAssets datum
@@ -129,11 +130,11 @@ mkValidator param datum action ctx =
         requiredFee = if totalLovelace > 5000000 then (totalLovelace `div` 100) * 15 else 1500000
         in valuePaidTo info treasuryPkh (Value.singleton Ada.adaSymbol Ada.adaToken requiredFee) >= requiredFee
     
-    --  very old
-    sufficientOutputToInitiator :: Bool
-    sufficientOutputToInitiator =
-      (getLovelace $ fromValue valueToBenefactor) >= (eventCostLovelace datum)
-        && (valueOf valueToBenefactor (ptSymbol param) (ptName param)) >= (eventCostPaymentToken datum)
+    -- --  very old
+    -- sufficientOutputToInitiator :: Bool
+    -- sufficientOutputToInitiator =
+    --   (getLovelace $ fromValue valueToBenefactor) >= (eventCostLovelace datum)
+    --     && (valueOf valueToBenefactor (ptSymbol param) (ptName param)) >= (eventCostPaymentToken datum)
 
     -- Returns True if at least 2 ADA fee is paid, or if fee is at least 5% of event cost.
     -- This approach allows for options on front-end while maintining guarantee that Organizer gets at least (cost - 2) or (cost * 95%)
@@ -142,25 +143,25 @@ mkValidator param datum action ctx =
     --
     -- ...ideally we don't want to rely on any third party to decide how much to charge
 
-    lovelaceOutputsCorrect :: Bool
-    lovelaceOutputsCorrect =
-      ( fromInteger (getLovelace $ fromValue valueToBeneficiary) >= (95 `unsafeRatio` 100) * fromInteger (eventCostLovelace datum)
-          && fromInteger (getLovelace $ fromValue valueToTreasury) >= (5 `unsafeRatio` 100) * fromInteger (eventCostLovelace datum)
-      )
-        || ( getLovelace (fromValue valueToBeneficiary) >= (eventCostLovelace datum - 2000000)
-               && getLovelace (fromValue valueToTreasury) >= 2000000
-           )
+    -- lovelaceOutputsCorrect :: Bool
+    -- lovelaceOutputsCorrect =
+    --   ( fromInteger (getLovelace $ fromValue valueToBeneficiary) >= (95 `unsafeRatio` 100) * fromInteger (eventCostLovelace datum)
+    --       && fromInteger (getLovelace $ fromValue valueToTreasury) >= (5 `unsafeRatio` 100) * fromInteger (eventCostLovelace datum)
+    --   )
+    --     || ( getLovelace (fromValue valueToBeneficiary) >= (eventCostLovelace datum - 2000000)
+    --            && getLovelace (fromValue valueToTreasury) >= 2000000
+    --        )
 
     -- vvv This isn't good, what if the utxo has a bit less in it... say user sent something, event didn't got booked, and now organizer 
     -- vvv can't even withdraw...
     -- gimbal costs can always stick to 95% / 5%
-    gimbalOutputsCorrect :: Bool
-    gimbalOutputsCorrect =
-      fromInteger (valueOf valueToBeneficiary (ptSymbol param) (ptName param)) >= (95 `unsafeRatio` 100) * fromInteger (eventCostPaymentToken datum)
-        && fromInteger (valueOf valueToTreasury (ptSymbol param) (ptName param)) >= (5 `unsafeRatio` 100) * fromInteger (eventCostPaymentToken datum)
+    -- gimbalOutputsCorrect :: Bool
+    -- gimbalOutputsCorrect =
+    --   fromInteger (valueOf valueToBeneficiary (ptSymbol param) (ptName param)) >= (95 `unsafeRatio` 100) * fromInteger (eventCostPaymentToken datum)
+    --     && fromInteger (valueOf valueToTreasury (ptSymbol param) (ptName param)) >= (5 `unsafeRatio` 100) * fromInteger (eventCostPaymentToken datum)
 
-    sufficientOutputToBeneficiary :: Bool
-    sufficientOutputToBeneficiary = gimbalOutputsCorrect && lovelaceOutputsCorrect
+    -- sufficientOutputToBeneficiary :: Bool
+    -- sufficientOutputToBeneficiary = gimbalOutputsCorrect && lovelaceOutputsCorrect
 
 data EscrowTypes
 

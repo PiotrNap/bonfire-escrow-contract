@@ -46,7 +46,6 @@ library
 
   exposed-modules:     Escrow.EscrowCompiler
                      , Escrow.Datum
-                     , Escrow.Dispute
                      , Escrow.EscrowContract
                      , Escrow.Types
  

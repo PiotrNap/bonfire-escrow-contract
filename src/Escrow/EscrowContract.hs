@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NumericUnderscores #-}
 
 module Escrow.EscrowContract where
 
@@ -20,26 +21,26 @@ import qualified PlutusTx
 import PlutusTx.Prelude hiding (Semigroup (..), unless)
 import PlutusTx.Prelude()
 import PlutusTx.Ratio()
-import qualified GHC.Real as PlutusTx.Prelude
-
---  add a way for service provider to withdraw utxo's older than 1 year: 
-
+ 
 {-# INLINEABLE mkValidator #-}
 mkValidator :: EscrowParam -> EventEscrowDatum -> EventAction -> ScriptContext -> Bool
 mkValidator param datum action ctx =
   case action of
     Cancel ->
-        traceIfFalse "The cancellation deadline has passed" beforeCancelDeadline
+      traceIfFalse "Cancellation Tx must be sign by one of two parties" (signedByBeneficiary || signedByBenefactor)
+       && traceIfFalse "The cancellation deadline has passed" beforeCancelDeadline
         && traceIfFalse "Output must be fully returned to benefactor" sufficientOutputToBenefactor
     Complete ->
-        traceIfFalse "It is too early to collect" afterReleaseDate
+        traceIfFalse "Beneficiary must sign the withdraw Tx" signedByBeneficiary
+        && traceIfFalse "It is too early to collect" afterReleaseDate
         && traceIfFalse "Output must be fully withdrawn" sufficientOutputToBeneficiary
     Recycle ->
         traceIfFalse "Recycle Tx must be signed by the treasury" signedByTreasury
         && traceIfFalse "UTxO must be older than 1 year" utxoOlderThanOneYear
+        && traceIfFalse "Recycle Tx must be sent to the treasury" sufficientOutputToTreasury
   where
     --- Variables ---
-    
+
     info :: TxInfo
     info = scriptContextTxInfo ctx
 
@@ -49,33 +50,38 @@ mkValidator param datum action ctx =
     inVals :: [CurrencySymbol]
     inVals = symbols totalValueSpent
 
-    totalLovelace :: Integer
-    totalLovelace = sum $ fmap (\i -> assetClassValueOf (txOutValue $ txInInfoResolved i) (AssetClass (Ada.adaSymbol, Ada.adaToken))) (txInfoInputs info)
-
-    nonLovelacePaymentAssets :: [Value]
-    nonLovelacePaymentAssets = filter (\v -> assetClassValueOf v (AssetClass (Ada.adaSymbol, Ada.adaToken)) == 0) (paymentAssets datum)
-
     valueToBenefactor :: Value
     valueToBenefactor = valuePaidTo info $ benefactorPkh datum
 
     valueToBeneficiary :: Value
     valueToBeneficiary = valuePaidTo info $ beneficiaryPkh datum
 
-    -- valueToTreasury :: Value
-    -- valueToTreasury = valuePaidTo info $ treasuryPkh param
+    valueToTreasury :: Value
+    valueToTreasury = valuePaidTo info $ treasuryPkh param
 
-    serviceFee :: Value 
+    serviceFee :: Integer
     serviceFee = 
-      if isBetaTesterTokenPresent 
-           then Ada.toValue 0
-           else 
-               let
-                   _totalLovelace = Ada.fromValue totalValueSpent
-               in
-                   if _totalLovelace > Ada.lovelaceOf 5
-                   then Ada.lovelaceValueOf (Ada.getLovelace _totalLovelace `PlutusTx.Prelude.div` 100 * 15)
-                   else Ada.lovelaceValueOf (Ada.getLovelace 1.5)
+      if isBetaTesterTokenPresent
+           then 0
+           else
+             let
+               totalLovelaceSpent = Ada.getLovelace $ Ada.fromValue totalValueSpent
+               lovelaceByFeeRate = round (fromInteger totalLovelaceSpent * (minServiceLovelaceFee `unsafeRatio` 100))
+             in 
+                if lovelaceByFeeRate <  minServiceLovelaceFee
+                then minServiceLovelaceFee
+                else lovelaceByFeeRate
+
     --- Functions ---
+   
+    signedByBeneficiary :: Bool
+    signedByBeneficiary = txSignedBy info $ beneficiaryPkh datum
+
+    signedByBenefactor :: Bool
+    signedByBenefactor = txSignedBy info $ benefactorPkh datum
+
+    signedByTreasury :: Bool
+    signedByTreasury = txSignedBy info $ treasuryPkh param
 
     isBetaTesterTokenPresent :: Bool
     isBetaTesterTokenPresent = betaTesterToken param `elem` inVals
@@ -86,36 +92,32 @@ mkValidator param datum action ctx =
     afterReleaseDate :: Bool
     afterReleaseDate = contains (from $ releaseDate datum) $ txInfoValidRange info
 
-    allLovelaceReturned :: Value -> Bool
-    allLovelaceReturned totalValue = 
-      let
-        adaAssetClass = AssetClass (Ada.adaSymbol, Ada.adaToken)
-        (_currencySymbol, _tokenName) = unAssetClass adaAssetClass
-        adaInTotalValue = valueOf totalValue _currencySymbol _tokenName
-        serviceFeeInLovelace = Ada.getLovelace $ Ada.fromValue serviceFee
-      in
-        adaInTotalValue >= totalLovelace - serviceFeeInLovelace
-
-    allAssetsReturned :: Value -> Bool
-    allAssetsReturned totalValue = all (\(assetClass, amount) -> valueOf totalValue (unAssetClass assetClass) >= amount) (paymentAssets datum)
-
     sufficientOutputToBeneficiary :: Bool
-    sufficientOutputToBeneficiary = allAssetsReturned valueToBeneficiary && allLovelaceReturned valueToBeneficiary 
+    sufficientOutputToBeneficiary = 
+          let serviceFeeValue = Ada.lovelaceValueOf serviceFee 
+          in totalValueSpent - serviceFeeValue == valueToBeneficiary - serviceFeeValue
 
     sufficientOutputToBenefactor :: Bool
-    sufficientOutputToBenefactor = valueSpent == valueToBenefactor
+    sufficientOutputToBenefactor = totalValueSpent == valueToBenefactor
 
-    signedByTreasury :: Bool
-    signedByTreasury = txSignedBy info $ treasuryPkh param
+    sufficientOutputToTreasury :: Bool
+    sufficientOutputToTreasury =
+      case action of 
+        Recycle -> totalValueSpent == valueToTreasury
+        _ -> valueToTreasury == Ada.lovelaceValueOf serviceFee
 
     utxoOlderThanOneYear :: Bool
-    utxoOlderThanOneYear = 
-        let
-          txInfoTimeRange = txInfoValidRange info
-          oneYearAgo = POSIXTime $ getPOSIXTime $ from txInfoTimeRange - 60 * 60 * 24 * 365
-        in
-          contains (from oneYearAgo) txInfoTimeRange
+    utxoOlderThanOneYear =
+      let
+         dateOfCreation = createdAt datum
+         oneYearLater = dateOfCreation + POSIXTime (60 * 60 * 24 * 365)
+      in
+         contains (from oneYearLater) (txInfoValidRange info)
 
+--- Helper Functions / Variables ---
+
+minServiceLovelaceFee :: Integer
+minServiceLovelaceFee = 1_500_000
 
 data EscrowTypes
 

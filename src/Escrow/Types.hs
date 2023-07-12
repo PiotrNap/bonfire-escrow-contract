@@ -7,7 +7,6 @@ module Escrow.Types where
 
 import Ledger hiding (singleton)
 import qualified PlutusTx
-import PlutusTx.Prelude hiding (Semigroup (..), unless)
 import Prelude (Show (..))
 
 data EscrowParam = EscrowParam
@@ -24,7 +23,7 @@ data EventEscrowDatum = EventEscrowDatum
     benefactorPkh :: !PubKeyHash,
     releaseDate :: !POSIXTime,
     cancelDeadline :: !POSIXTime,
-    paymentAssets :: [(AssetClass, Integer)]
+    createdAt :: !POSIXTime
   }
 
 PlutusTx.unstableMakeIsData ''EventEscrowDatum

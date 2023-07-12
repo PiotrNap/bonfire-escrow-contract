@@ -39,81 +39,81 @@ import PlutusTx.Ratio (numerator)
 -- IF we create a separate "Dispute Contract", should its ValidatorHash be referenced here,
 -- OR the other way around?
 
-{-# INLINEABLE mkValidator #-}
-mkValidator :: DisputeParam -> DisputeDatum -> DisputeResult -> ScriptContext -> Bool
-mkValidator dp dd res ctx =
-  case res of
-    PayAttendee ->
-      traceIfFalse "Must include Bonfire Admin Token" inputHasAdminToken
-        && traceIfFalse "Must pay to Attendee" outputToAttendee
-    PayOrganizer ->
-      traceIfFalse "Must include Bonfire Admin Token" inputHasAdminToken
-        && traceIfFalse "Must pay to Organizer" outputToOrganizer
-    Split ->
-      traceIfFalse "Must include Bonfire Admin Token" inputHasAdminToken
-        && traceIfFalse "Must pay to Attendee and Organizer" outputToBoth
-  where
-    info :: TxInfo
-    info = scriptContextTxInfo ctx
+-- {-# INLINEABLE mkValidator #-}
+-- mkValidator :: DisputeParam -> DisputeDatum -> DisputeResult -> ScriptContext -> Bool
+-- mkValidator dp dd res ctx =
+--   case res of
+--     PayAttendee ->
+--       traceIfFalse "Must include Bonfire Admin Token" inputHasAdminToken
+--         && traceIfFalse "Must pay to Attendee" outputToAttendee
+--     PayOrganizer ->
+--       traceIfFalse "Must include Bonfire Admin Token" inputHasAdminToken
+--         && traceIfFalse "Must pay to Organizer" outputToOrganizer
+--     Split ->
+--       traceIfFalse "Must include Bonfire Admin Token" inputHasAdminToken
+--         && traceIfFalse "Must pay to Attendee and Organizer" outputToBoth
+--   where
+--     info :: TxInfo
+--     info = scriptContextTxInfo ctx
 
     -- Create a list of all CurrencySymbol in tx input
-    inVals :: [CurrencySymbol]
-    inVals = symbols $ valueSpent info
+    -- inVals :: [CurrencySymbol]
+    -- inVals = symbols $ valueSpent info
 
-    inputHasAdminToken :: Bool
-    inputHasAdminToken = (adminToken dp) `elem` inVals
+    -- inputHasAdminToken :: Bool
+    -- inputHasAdminToken = (adminToken dp) `elem` inVals
 
-    valueToAttendee :: Value
-    valueToAttendee = valuePaidTo info $ bddAttendeePkh dd
+    -- valueToAttendee :: Value
+    -- valueToAttendee = valuePaidTo info $ bddAttendeePkh dd
 
-    valueToOrganizer :: Value
-    valueToOrganizer = valuePaidTo info $ bddOrganizerPkh dd
+    -- valueToOrganizer :: Value
+    -- valueToOrganizer = valuePaidTo info $ bddOrganizerPkh dd
 
-    valueToTreasury :: Value
-    valueToTreasury = valuePaidTo info $ treasuryPkh dp
+    -- valueToTreasury :: Value
+    -- valueToTreasury = valuePaidTo info $ treasuryPkh dp
 
-    -- see https://playground.plutus.iohkdev.io/doc/haddock/plutus-tx/html/PlutusTx-Prelude.html
-    -- unsafeRatio does not protect for zero denominator
-    -- all denominators are specified here, so we are "safe"
+    -- -- see https://playground.plutus.iohkdev.io/doc/haddock/plutus-tx/html/PlutusTx-Prelude.html
+    -- -- unsafeRatio does not protect for zero denominator
+    -- -- all denominators are specified here, so we are "safe"
 
-    -- With minimum event cost of 20 ada, nothing needs to be changed here.
+    -- -- With minimum event cost of 20 ada, nothing needs to be changed here.
 
-    outputToAttendee :: Bool
-    outputToAttendee =
-      fromInteger (valueOf valueToAttendee (dpPtSymbol dp) (dpPtName dp)) >= (9 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
-        && fromInteger (getLovelace $ fromValue valueToAttendee) >= (9 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
-        && fromInteger (valueOf valueToTreasury (dpPtSymbol dp) (dpPtName dp)) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
-        && fromInteger (getLovelace $ fromValue valueToTreasury) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
+    -- outputToAttendee :: Bool
+    -- outputToAttendee =
+    --   fromInteger (valueOf valueToAttendee (dpPtSymbol dp) (dpPtName dp)) >= (9 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
+    --     && fromInteger (getLovelace $ fromValue valueToAttendee) >= (9 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
+    --     && fromInteger (valueOf valueToTreasury (dpPtSymbol dp) (dpPtName dp)) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
+    --     && fromInteger (getLovelace $ fromValue valueToTreasury) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
 
-    outputToOrganizer :: Bool
-    outputToOrganizer =
-      fromInteger (valueOf valueToOrganizer (dpPtSymbol dp) (dpPtName dp)) >= (9 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
-        && fromInteger (getLovelace $ fromValue valueToOrganizer) >= (9 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
-        && fromInteger (valueOf valueToTreasury (dpPtSymbol dp) (dpPtName dp)) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
-        && fromInteger (getLovelace $ fromValue valueToTreasury) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
+    -- outputToOrganizer :: Bool
+    -- outputToOrganizer =
+    --   fromInteger (valueOf valueToOrganizer (dpPtSymbol dp) (dpPtName dp)) >= (9 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
+    --     && fromInteger (getLovelace $ fromValue valueToOrganizer) >= (9 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
+    --     && fromInteger (valueOf valueToTreasury (dpPtSymbol dp) (dpPtName dp)) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
+    --     && fromInteger (getLovelace $ fromValue valueToTreasury) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
 
-    outputToBoth :: Bool
-    outputToBoth =
-      fromInteger (valueOf valueToAttendee (dpPtSymbol dp) (dpPtName dp)) >= (45 `unsafeRatio` 100) * fromInteger (bddEventCostPaymentToken dd)
-        && fromInteger (getLovelace $ fromValue valueToAttendee) >= (45 `unsafeRatio` 100) * fromInteger (bddEventCostLovelace dd)
-        && fromInteger (valueOf valueToOrganizer (dpPtSymbol dp) (dpPtName dp)) >= (45 `unsafeRatio` 100) * fromInteger (bddEventCostPaymentToken dd)
-        && fromInteger (getLovelace $ fromValue valueToOrganizer) >= (45 `unsafeRatio` 100) * fromInteger (bddEventCostLovelace dd)
-        && fromInteger (valueOf valueToTreasury (dpPtSymbol dp) (dpPtName dp)) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
-        && fromInteger (getLovelace $ fromValue valueToTreasury) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
+    -- outputToBoth :: Bool
+    -- outputToBoth =
+    --   fromInteger (valueOf valueToAttendee (dpPtSymbol dp) (dpPtName dp)) >= (45 `unsafeRatio` 100) * fromInteger (bddEventCostPaymentToken dd)
+    --     && fromInteger (getLovelace $ fromValue valueToAttendee) >= (45 `unsafeRatio` 100) * fromInteger (bddEventCostLovelace dd)
+    --     && fromInteger (valueOf valueToOrganizer (dpPtSymbol dp) (dpPtName dp)) >= (45 `unsafeRatio` 100) * fromInteger (bddEventCostPaymentToken dd)
+    --     && fromInteger (getLovelace $ fromValue valueToOrganizer) >= (45 `unsafeRatio` 100) * fromInteger (bddEventCostLovelace dd)
+    --     && fromInteger (valueOf valueToTreasury (dpPtSymbol dp) (dpPtName dp)) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostPaymentToken dd)
+    --     && fromInteger (getLovelace $ fromValue valueToTreasury) >= (1 `unsafeRatio` 10) * fromInteger (bddEventCostLovelace dd)
 
-data EscrowTypes
+-- data EscrowTypes
 
-instance ValidatorTypes EscrowTypes where
-  type DatumType EscrowTypes = DisputeDatum
-  type RedeemerType EscrowTypes = DisputeResult
+-- instance ValidatorTypes EscrowTypes where
+  -- type DatumType EscrowTypes = DisputeDatum
+  -- type RedeemerType EscrowTypes = DisputeResult
 
-typedValidator :: DisputeParam -> TypedValidator EscrowTypes
-typedValidator bp =
-  mkTypedValidator @EscrowTypes
-    ($$(PlutusTx.compile [||mkValidator||]) `PlutusTx.applyCode` PlutusTx.liftCode bp)
-    $$(PlutusTx.compile [||wrap||])
-  where
-    wrap = wrapValidator @DisputeDatum @DisputeResult
+-- typedValidator :: DisputeParam -> TypedValidator EscrowTypes
+-- typedValidator bp =
+  -- mkTypedValidator @EscrowTypes
+    -- ($$(PlutusTx.compile [||mkValidator||]) `PlutusTx.applyCode` PlutusTx.liftCode bp)
+    -- $$(PlutusTx.compile [||wrap||])
+  -- where
+    -- wrap = wrapValidator @DisputeDatum @DisputeResult
 
-validator :: DisputeParam -> Validator
-validator = validatorScript . typedValidator
+-- validator :: DisputeParam -> Validator
+-- validator = validatorScript . typedValidator

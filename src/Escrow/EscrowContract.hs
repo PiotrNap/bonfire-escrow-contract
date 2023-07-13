@@ -23,7 +23,7 @@ import PlutusTx.Prelude()
 import PlutusTx.Ratio()
  
 {-# INLINEABLE mkValidator #-}
-mkValidator :: EscrowParam -> EventEscrowDatum -> EventAction -> ScriptContext -> Bool
+mkValidator :: EscrowParam -> EscrowDatum -> EventAction -> ScriptContext -> Bool
 mkValidator param datum action ctx =
   case action of
     Cancel ->
@@ -122,7 +122,7 @@ minServiceLovelaceFee = 1_500_000
 data EscrowTypes
 
 instance ValidatorTypes EscrowTypes where
-  type DatumType EscrowTypes = EventEscrowDatum
+  type DatumType EscrowTypes = EscrowDatum
   type RedeemerType EscrowTypes = EventAction
 
 typedValidator :: EscrowParam -> TypedValidator EscrowTypes
@@ -131,7 +131,7 @@ typedValidator param =
     ($$(PlutusTx.compile [||mkValidator||]) `PlutusTx.applyCode` PlutusTx.liftCode param)
     $$(PlutusTx.compile [||wrap||])
   where
-    wrap = wrapValidator @EventEscrowDatum @EventAction
+    wrap = wrapValidator @EscrowDatum @EventAction
 
 validator :: EscrowParam -> Validator
 validator = validatorScript . typedValidator

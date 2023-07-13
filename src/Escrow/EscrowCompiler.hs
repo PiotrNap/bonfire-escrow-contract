@@ -33,9 +33,4 @@ writeValidator file = writeFileTextEnvelope @(PlutusScript PlutusScriptV1) file 
 writeEscrowScript :: IO (Either (FileError ()) ())
 writeEscrowScript =
   writeValidator "output/plutus-scripts/escrow-v1.plutus" $
-    Escrow.EscrowContract.validator $
-      EscrowParam
-        { 
-            treasuryPkh = "f83d6f9d63a4b9541ad4efca5b48280bffdb8ac4e424c94432788109",
-            betaTesterToken = "0c930db0966a7456dfa21096261a1c5caa7599390b9125212ce48fce"
-        }
+    Escrow.EscrowContract.validator exampleParam

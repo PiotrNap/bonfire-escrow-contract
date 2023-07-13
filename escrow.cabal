@@ -45,7 +45,7 @@ library
   hs-source-dirs:      src
 
   exposed-modules:     Escrow.EscrowCompiler
-                     , Escrow.Datum
+                     , Escrow.DataToJson
                      , Escrow.EscrowContract
                      , Escrow.Types
  
@@ -55,11 +55,8 @@ library
                      , cardano-api
                      , containers
                      , data-default
-                     , playground-common
-                     , plutus-contract
                      , plutus-ledger
                      , plutus-ledger-api
-                     , plutus-ledger-constraints
                      , plutus-tx-plugin
                      , plutus-tx
                      , serialise

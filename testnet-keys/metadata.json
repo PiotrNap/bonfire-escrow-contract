@@ -1,0 +1,13 @@
+{
+    "721": {
+        "283eb7c920155ba340c772eacdf466ccb45382202540ad734ded2fb5": {
+          "BETA#1": {
+            "name": "Bonfire Beta",
+            "image": "thumbnail",
+            "location": {
+              "ipfs": "ipfs://QmWVCvKCqMQh4FPSvgr2uvUzwRtXKm7cjdSH9bjDqeYGrp"
+            }
+          }
+        }
+      }
+}

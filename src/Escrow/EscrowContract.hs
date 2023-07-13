@@ -33,7 +33,7 @@ mkValidator param datum action ctx =
     Complete ->
         traceIfFalse "Beneficiary must sign the withdraw Tx" signedByBeneficiary
         && traceIfFalse "It is too early to collect" afterReleaseDate
-        && traceIfFalse "Output must be fully withdrawn" sufficientOutputToBeneficiary
+        && traceIfFalse "Output must be fully withdrawn" (sufficientOutputToBeneficiary && sufficientOutputToTreasury) -- fee applied
     Recycle ->
         traceIfFalse "Recycle Tx must be signed by the treasury" signedByTreasury
         && traceIfFalse "UTxO must be older than 1 year" utxoOlderThanOneYear
@@ -104,7 +104,7 @@ mkValidator param datum action ctx =
     sufficientOutputToTreasury =
       case action of 
         Recycle -> totalValueSpent == valueToTreasury
-        _ -> valueToTreasury == Ada.lovelaceValueOf serviceFee
+        Complete -> valueToTreasury == Ada.lovelaceValueOf serviceFee
 
     utxoOlderThanOneYear :: Bool
     utxoOlderThanOneYear =

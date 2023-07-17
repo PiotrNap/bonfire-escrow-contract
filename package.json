@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "test": "vitest",
+    "test:debug": "vitest --inspect-brk --single-thread"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@hyperionbt/helios": "^0.14.4",
+    "vitest": "^0.33.0"
+  }
+}

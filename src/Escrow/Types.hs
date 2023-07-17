@@ -17,7 +17,7 @@ data EscrowParam = EscrowParam
 
 PlutusTx.makeLift ''EscrowParam
 
-
+-- Testnet params
 exampleParam :: EscrowParam
 exampleParam = EscrowParam
          { 

@@ -21,9 +21,10 @@ import qualified PlutusTx
 import PlutusTx.Prelude hiding (Semigroup (..), unless)
 import PlutusTx.Prelude()
 import PlutusTx.Ratio()
+import qualified Plutus.V2.Ledger.Api as PlutusV2
  
 {-# INLINEABLE mkValidator #-}
-mkValidator :: EscrowParam -> EscrowDatum -> EventAction -> ScriptContext -> Bool
+mkValidator :: EscrowParam -> EscrowDatum -> EventAction -> PlutusV2.ScriptContext -> Bool
 mkValidator param datum action ctx =
   case action of
     Cancel ->
@@ -125,13 +126,13 @@ instance ValidatorTypes EscrowTypes where
   type DatumType EscrowTypes = EscrowDatum
   type RedeemerType EscrowTypes = EventAction
 
-typedValidator :: EscrowParam -> TypedValidator EscrowTypes
+typedValidator :: EscrowParam -> PlutusV2.TypedValidator EscrowTypes
 typedValidator param =
-  mkTypedValidator @EscrowTypes
+  Utils.mkTypedValidator @EscrowTypes
     ($$(PlutusTx.compile [||mkValidator||]) `PlutusTx.applyCode` PlutusTx.liftCode param)
     $$(PlutusTx.compile [||wrap||])
   where
     wrap = wrapValidator @EscrowDatum @EventAction
 
-validator :: EscrowParam -> Validator
+validator :: EscrowParam -> PlutusV2.Validator
 validator = validatorScript . typedValidator

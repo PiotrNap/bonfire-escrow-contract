@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Escrow.EscrowCompiler where
+module Escrow.EscrowCompiler (writeParameratizedValidator, writeJson) where
 
 import Cardano.Api
 import Cardano.Api.Shelley (PlutusScript (..))
@@ -12,7 +12,7 @@ import qualified Data.ByteString.Short as SBS
 import Escrow.EscrowContract
 import Escrow.Types
 import qualified Ledger
-import Plutus.V1.Ledger.Api (Data (B, Constr, I, List, Map), ToData, toData)
+import Plutus.V1.Ledger.Api (Data (B, Constr, I, List, Map), ToData, toData, unValidatorScript)
 import GHC.IO
 import Data.Either
 import PlutusTx.Prelude ((<$>), ($), Functor (fmap), (.), Maybe (Nothing))
@@ -28,9 +28,9 @@ writeJson :: ToData a => FilePath -> a -> IO ()
 writeJson file = LBS.writeFile file . encode . scriptDataToJson ScriptDataJsonDetailedSchema . dataToScriptData . toData
 
 writeValidator :: FilePath -> Ledger.Validator -> IO (Either (FileError ()) ())
-writeValidator file = writeFileTextEnvelope @(PlutusScript PlutusScriptV1) file Nothing . PlutusScriptSerialised . SBS.toShort . LBS.toStrict . serialise . Ledger.unValidatorScript
+writeValidator file = writeFileTextEnvelope @(PlutusScript PlutusScriptV2) file Nothing . PlutusScriptSerialised . SBS.toShort . LBS.toStrict . serialise . unValidatorScript
 
-writeEscrowScript :: IO (Either (FileError ()) ())
-writeEscrowScript =
+writeParameratizedValidator :: IO (Either (FileError ()) ())
+writeParameratizedValidator =
   writeValidator "output/plutus-scripts/escrow.plutus" $
     Escrow.EscrowContract.validator exampleParam

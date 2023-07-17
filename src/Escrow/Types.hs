@@ -11,8 +11,8 @@ import Prelude (Show (..))
 
 data EscrowParam = EscrowParam
   {
-    treasuryPkh :: !PubKeyHash,
-    betaTesterToken :: !CurrencySymbol
+    treasuryPkh :: PubKeyHash,
+    betaTesterToken :: CurrencySymbol
   }
 
 PlutusTx.makeLift ''EscrowParam
@@ -27,11 +27,11 @@ exampleParam = EscrowParam
 
 data EscrowDatum = EscrowDatum
   {
-    beneficiaryPkh :: !PubKeyHash,
-    benefactorPkh :: !PubKeyHash,
-    releaseDate :: !POSIXTime,
-    cancelDeadline :: !POSIXTime,
-    createdAt :: !POSIXTime
+    beneficiaryPkh :: PubKeyHash,
+    benefactorPkh :: PubKeyHash,
+    releaseDate :: POSIXTime,
+    cancelDeadline :: POSIXTime,
+    createdAt :: POSIXTime
   }
 
 PlutusTx.unstableMakeIsData ''EscrowDatum

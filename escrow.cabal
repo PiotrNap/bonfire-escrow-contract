@@ -1,7 +1,7 @@
 Cabal-Version:      2.4
 Name:               escrow-contract
 Version:            1.0.0.0
-Author:              Gimbalabs contributors
+Authors:              Piotr Napierala, Gimbalabs contributors
 Maintainer:          p.napierala@mailfence.com
 Build-Type:          Simple
 License:             Apache-2.0
@@ -42,24 +42,22 @@ library
   if flag(unexpected_thunks)
     cpp-options: -DUNEXPECTED_THUNKS
 
-  hs-source-dirs:      src
+  hs-source-dirs:       src
+
 
   exposed-modules:     Escrow.EscrowCompiler
                      , Escrow.DataToJson
                      , Escrow.EscrowContract
                      , Escrow.Types
  
-  build-depends:      aeson
-                     , base ^>=4.14.1.0
-                     , bytestring
-                     , cardano-api
-                     , containers
-                     , data-default
-                     , plutus-ledger
-                     , plutus-ledger-api
-                     , plutus-tx-plugin
-                     , plutus-tx
-                     , serialise
-                     , text
+  build-depends:        bytestring
+                      , cardano-api
+                      , plutus-ledger
+                      , plutus-ledger-api
+                      , plutus-tx
+                      , plutus-script-utils
+                      , serialise
+                      , aeson
 
   ghc-options: -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+

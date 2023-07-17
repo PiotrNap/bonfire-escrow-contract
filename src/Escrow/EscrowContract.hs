@@ -10,21 +10,21 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NumericUnderscores #-}
 
-module Escrow.EscrowContract where
+module Escrow.EscrowContract (validator, validatorHash) where
 
 import Escrow.Types
-import Ledger hiding (singleton)
-import Ledger.Ada as Ada
-import Ledger.Typed.Scripts
-import Ledger.Value as Value
-import qualified PlutusTx
+import Ledger (contains)
+import qualified Ledger.Ada as Ada
+import Plutus.Script.Utils.V1.Typed.Scripts.Validators (DatumType, RedeemerType)
+import Plutus.Script.Utils.V2.Typed.Scripts (TypedValidator, ValidatorTypes, mkTypedValidatorParam, mkUntypedValidator, validatorHash, validatorScript)
+import Plutus.V1.Ledger.Value
+import Plutus.V2.Ledger.Api
+import Plutus.V2.Ledger.Contexts
+import PlutusTx
 import PlutusTx.Prelude hiding (Semigroup (..), unless)
-import PlutusTx.Prelude()
-import PlutusTx.Ratio()
-import qualified Plutus.V2.Ledger.Api as PlutusV2
  
 {-# INLINEABLE mkValidator #-}
-mkValidator :: EscrowParam -> EscrowDatum -> EventAction -> PlutusV2.ScriptContext -> Bool
+mkValidator :: EscrowParam -> EscrowDatum -> EventAction -> ScriptContext -> Bool
 mkValidator param datum action ctx =
   case action of
     Cancel ->
@@ -120,19 +120,25 @@ mkValidator param datum action ctx =
 minServiceLovelaceFee :: Integer
 minServiceLovelaceFee = 1_500_000
 
+---
+
 data EscrowTypes
 
 instance ValidatorTypes EscrowTypes where
   type DatumType EscrowTypes = EscrowDatum
   type RedeemerType EscrowTypes = EventAction
 
-typedValidator :: EscrowParam -> PlutusV2.TypedValidator EscrowTypes
-typedValidator param =
-  Utils.mkTypedValidator @EscrowTypes
-    ($$(PlutusTx.compile [||mkValidator||]) `PlutusTx.applyCode` PlutusTx.liftCode param)
-    $$(PlutusTx.compile [||wrap||])
+typedValidator :: EscrowParam -> TypedValidator EscrowTypes
+typedValidator = go
   where
-    wrap = wrapValidator @EscrowDatum @EventAction
+    go =
+      mkTypedValidatorParam @EscrowTypes
+        $$(PlutusTx.compile [||mkValidator||])
+        $$(PlutusTx.compile [||wrap||])
+    wrap = mkUntypedValidator
 
-validator :: EscrowParam -> PlutusV2.Validator
+validator :: EscrowParam -> Validator
 validator = validatorScript . typedValidator
+
+escrowValidatorHash :: EscrowParam -> ValidatorHash
+escrowValidatorHash = validatorHash . typedValidator

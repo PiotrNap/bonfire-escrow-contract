@@ -52,3 +52,6 @@ addr=$(echo $ext_chain_pub \
   | cardano-address address delegation $(echo $stake_key | cardano-address key hash))
 echo "Testnet Address: $addr"
 echo $addr >> $KEYS_DIR/addr
+
+# Convert extended signing key into Shelley format key
+cardano-cli key convert-cardano-address-key --shelley-payment-key --signing-key-file $KEYS_DIR/ext_chain_key --out-file $KEYS_DIR/addr.skey

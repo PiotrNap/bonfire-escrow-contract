@@ -48,6 +48,8 @@ mkValidator param datum action ctx =
     totalValueSpent :: Value
     totalValueSpent = valueSpent info
 
+    totalOwnValueSpent :: Value
+
     inVals :: [CurrencySymbol]
     inVals = symbols totalValueSpent
 
@@ -66,7 +68,7 @@ mkValidator param datum action ctx =
            then 0
            else
              let
-               totalLovelaceSpent = Ada.getLovelace $ Ada.fromValue totalValueSpent
+               totalLovelaceSpent = Ada.getLovelace $ Ada.fromValue totalOwnValueSpent
                lovelaceByFeeRate = round (fromInteger totalLovelaceSpent * (1 `unsafeRatio` 100))
              in 
                 if lovelaceByFeeRate <  minServiceLovelaceFee
@@ -96,7 +98,7 @@ mkValidator param datum action ctx =
     sufficientOutputToBeneficiary :: Bool
     sufficientOutputToBeneficiary = 
           let serviceFeeValue = Ada.lovelaceValueOf serviceFee 
-          in totalValueSpent - serviceFeeValue == valueToBeneficiary - serviceFeeValue
+          in totalOwnValueSpent - serviceFeeValue == valueToBeneficiary - serviceFeeValue
 
     sufficientOutputToBenefactor :: Bool
     sufficientOutputToBenefactor = totalValueSpent == valueToBenefactor
@@ -104,7 +106,7 @@ mkValidator param datum action ctx =
     sufficientOutputToTreasury :: Bool
     sufficientOutputToTreasury =
       case action of 
-        Recycle -> totalValueSpent == valueToTreasury
+        Recycle -> totalOwnValueSpent == valueToTreasury
         Complete -> valueToTreasury == Ada.lovelaceValueOf serviceFee
 
     utxoOlderThanOneYear :: Bool

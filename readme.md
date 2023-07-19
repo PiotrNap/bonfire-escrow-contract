@@ -1,4 +1,4 @@
-# Bonfire Escrow
+# Escrow Contract
 
 ## Plutus Documentation
 

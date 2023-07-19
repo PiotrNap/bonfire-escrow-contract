@@ -20,10 +20,10 @@ PlutusTx.makeLift ''EscrowParam
 -- Testnet params
 exampleParam :: EscrowParam
 exampleParam = EscrowParam
-         { 
-            treasuryPkh = "3475d4d36f40048a934ddc211dd84fa7c00a910421b566fc7e886080",
-            betaTesterToken = "481146d15d0c9bacc880254f88f944f6a88dba2e917d35fcbf92aa24"
-         }
+  { 
+     treasuryPkh = "3475d4d36f40048a934ddc211dd84fa7c00a910421b566fc7e886080",
+     betaTesterToken = "481146d15d0c9bacc880254f88f944f6a88dba2e917d35fcbf92aa24"
+  }
 
 data EscrowDatum = EscrowDatum
   {

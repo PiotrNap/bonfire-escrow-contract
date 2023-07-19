@@ -32,5 +32,4 @@ writeValidator file = writeFileTextEnvelope @(PlutusScript PlutusScriptV2) file 
 
 writeParameratizedValidator :: IO (Either (FileError ()) ())
 writeParameratizedValidator =
-  writeValidator "output/plutus-scripts/escrow.plutus" $
-    Escrow.EscrowContract.validator exampleParam
+  writeValidator "output/plutus-scripts/escrow.plutus" $ validator exampleParam

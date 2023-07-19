@@ -1,7 +1,7 @@
 Cabal-Version:      2.4
 Name:               escrow-contract
 Version:            1.0.0.0
-Authors:              Piotr Napierala, Gimbalabs contributors
+Author:              Piotr Napierala & Gimbalabs contributors
 Maintainer:          p.napierala@mailfence.com
 Build-Type:          Simple
 License:             Apache-2.0
@@ -55,6 +55,7 @@ library
                       , plutus-ledger
                       , plutus-ledger-api
                       , plutus-tx
+                      , plutus-tx-plugin
                       , plutus-script-utils
                       , serialise
                       , aeson

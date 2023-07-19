@@ -67,7 +67,7 @@ mkValidator param datum action ctx =
            else
              let
                totalLovelaceSpent = Ada.getLovelace $ Ada.fromValue totalValueSpent
-               lovelaceByFeeRate = round (fromInteger totalLovelaceSpent * (minServiceLovelaceFee `unsafeRatio` 100))
+               lovelaceByFeeRate = round (fromInteger totalLovelaceSpent * (1 `unsafeRatio` 100))
              in 
                 if lovelaceByFeeRate <  minServiceLovelaceFee
                 then minServiceLovelaceFee

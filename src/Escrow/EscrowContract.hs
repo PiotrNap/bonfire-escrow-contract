@@ -22,7 +22,18 @@ import Plutus.V2.Ledger.Api
 import Plutus.V2.Ledger.Contexts
 import PlutusTx
 import PlutusTx.Prelude hiding (Semigroup (..), unless)
- 
+
+-- This validator should meet the following requirements:
+--
+-- 1. Allow to cancel a transaction by one of two parties transacting with each other
+-- 2. Allow to cancel only before the cancellation deadline
+-- 3. Ensure all the funds are returned to benefactor during on-time cancellation 
+-- 4. Prevent from collecting funds before release date by anyone
+-- 5. Allow to collect funds after release date by beneficiary
+-- 6. Check whether sufficient fee was sent to treasury (if any)
+-- 7. Allow to recycle UTxOs older than 1 year by a treasury
+-- 8. All recycled UTxOs must be returned to the treasury
+
 {-# INLINEABLE mkValidator #-}
 mkValidator :: EscrowParam -> EscrowDatum -> EventAction -> ScriptContext -> Bool
 mkValidator param datum action ctx =
@@ -30,15 +41,15 @@ mkValidator param datum action ctx =
     Cancel ->
       traceIfFalse "Cancellation Tx must be sign by one of two parties" (signedByBeneficiary || signedByBenefactor)
        && traceIfFalse "The cancellation deadline has passed" beforeCancelDeadline
-        && traceIfFalse "Output must be fully returned to benefactor" sufficientOutputToBenefactor
+        && traceIfFalse "Output must be sent to benefactor" sufficientOutputToBenefactor
     Complete ->
-        traceIfFalse "Beneficiary must sign the withdraw Tx" signedByBeneficiary
-        && traceIfFalse "It is too early to collect" afterReleaseDate
-        && traceIfFalse "Output must be fully withdrawn" (sufficientOutputToBeneficiary && sufficientOutputToTreasury) -- fee applied
+        traceIfFalse "It is too early to collect" afterReleaseDate
+        && traceIfFalse "Output must be sent to beneficiary" (valueToBeneficiary - serviceFeeValue == valueProduced info - serviceFeeValue)
+        && traceIfFalse "Fee must be sent to the treasury" sufficientFeeToTreasury
     Recycle ->
         traceIfFalse "Recycle Tx must be signed by the treasury" signedByTreasury
         && traceIfFalse "UTxO must be older than 1 year" utxoOlderThanOneYear
-        && traceIfFalse "Recycle Tx must be sent to the treasury" sufficientOutputToTreasury
+        && traceIfFalse "Recycle Tx must be sent to the treasury" (valueToTreasury == valueProduced info)
   where
     --- Variables ---
 
@@ -53,30 +64,52 @@ mkValidator param datum action ctx =
     inVals :: [CurrencySymbol]
     inVals = symbols totalValueSpent
 
-    valueToBenefactor :: Value
-    valueToBenefactor = valuePaidTo info $ benefactorPkh datum
-
     valueToBeneficiary :: Value
     valueToBeneficiary = valuePaidTo info $ beneficiaryPkh datum
 
     valueToTreasury :: Value
     valueToTreasury = valuePaidTo info $ treasuryPkh param
 
-    serviceFee :: Integer
-    serviceFee = 
-      if isBetaTesterTokenPresent
-           then 0
+    ownInput :: Maybe TxInInfo
+    ownInput = findOwnInput ctx
+
+    --
+    -- ! This is wrong. 'totalValueSpent' is not (always) equal to the amount of funds
+    -- being unlocked from the script.
+    -- 
+    -- Solution : calculate fee based on the total ownInput's Value,
+    -- if 'serviceFeeValue' < totalOutputToTreasury then False else True
+    serviceFeeValue :: Value
+    serviceFeeValue =
+      if isBetaTesterTokenPresent || isNothing ownInput
+           then Ada.lovelaceValueOf 0
            else
              let
                totalLovelaceSpent = Ada.getLovelace $ Ada.fromValue totalOwnValueSpent
                lovelaceByFeeRate = round (fromInteger totalLovelaceSpent * (1 `unsafeRatio` 100))
-             in 
+             in
                 if lovelaceByFeeRate <  minServiceLovelaceFee
-                then minServiceLovelaceFee
-                else lovelaceByFeeRate
+                then Ada.lovelaceValueOf minServiceLovelaceFee
+                else Ada.lovelaceValueOf lovelaceByFeeRate
 
     --- Functions ---
-   
+
+    filterInputsWithDatums :: ScriptContext -> [TxInInfo]
+    filterInputsWithDatums =
+        let inputs = txInfoInputs $ scriptContextTxInfo ctx
+        in filter (isJust . txOutDatum . txInInfoResolved) inputs
+
+    getTxInInfoValue :: TxInInfo -> Value
+    getTxInInfoValue txInInfo = txOutValue $ txInInfoResolved txInInfo
+
+    currentOutputTo :: PubKeyHash -> Bool
+    currentOutputTo pkh = case ownInput of
+                Just input -> getTxInInfoValue input `geq` valuePaidTo info  pkh -- this assumes that value paid to someone is less than spending script's output -> WRONG
+                Nothing -> False
+
+    sufficientOutputToBenefactor :: Bool
+    sufficientOutputToBenefactor = currentOutputTo $ benefactorPkh datum
+
     signedByBeneficiary :: Bool
     signedByBeneficiary = txSignedBy info $ beneficiaryPkh datum
 
@@ -95,19 +128,8 @@ mkValidator param datum action ctx =
     afterReleaseDate :: Bool
     afterReleaseDate = contains (from $ releaseDate datum) $ txInfoValidRange info
 
-    sufficientOutputToBeneficiary :: Bool
-    sufficientOutputToBeneficiary = 
-          let serviceFeeValue = Ada.lovelaceValueOf serviceFee 
-          in totalOwnValueSpent - serviceFeeValue == valueToBeneficiary - serviceFeeValue
-
-    sufficientOutputToBenefactor :: Bool
-    sufficientOutputToBenefactor = totalValueSpent == valueToBenefactor
-
-    sufficientOutputToTreasury :: Bool
-    sufficientOutputToTreasury =
-      case action of 
-        Recycle -> totalOwnValueSpent == valueToTreasury
-        Complete -> valueToTreasury == Ada.lovelaceValueOf serviceFee
+    sufficientFeeToTreasury :: Bool
+    sufficientFeeToTreasury = valueToTreasury == serviceFeeValue
 
     utxoOlderThanOneYear :: Bool
     utxoOlderThanOneYear =

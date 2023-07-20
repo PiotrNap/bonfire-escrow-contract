@@ -1,11 +1,12 @@
 Cabal-Version:      2.4
 Name:               escrow-contract
 Version:            1.0.0.0
-Author:              Piotr Napierala & Gimbalabs contributors
+Author:              Piotr Napierala
 Maintainer:          p.napierala@mailfence.com
 Build-Type:          Simple
 License:             Apache-2.0
 License-files:       LICENSE
+Description:        Special thanks to Gimbalabs for initial help.
 
 Flag unexpected_thunks
   Description:   Turn on unexpected thunks checks

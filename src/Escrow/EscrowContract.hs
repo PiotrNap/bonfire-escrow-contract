@@ -79,7 +79,10 @@ mkValidator param datum action ctx =
              else Ada.lovelaceValueOf lovelaceByFeeRate
 
     sufficientOutputTo :: PubKeyHash -> Bool
-    sufficientOutputTo pkh = valueTo pkh `geq` paymentTokens datum
+    sufficientOutputTo pkh 
+        | (pkh == benefactor) || (pkh == treasury) = valueTo pkh `geq` paymentTokens datum
+        | pkh == beneficiary = (valueTo pkh - serviceFeeValue) `geq` (paymentTokens datum - serviceFeeValue)
+        | otherwise = False
 
     signedBy :: PubKeyHash -> Bool
     signedBy = txSignedBy info

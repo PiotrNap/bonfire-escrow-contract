@@ -85,24 +85,24 @@ betaTesterToken = "481146d15d0c9bacc880254f88f944f6a88dba2e917d35fcbf92aa24"
 Set those variables before going through any test scenario.
 
 ```
-BENEFACTOR=addr_test1qptjnhrdj59a6l8kpfwyz6g3nle2wre63attjwc9dfl2htaez6y4l8t8qfp0mmwmtgz86tjrfdmj6h95qedegpdtap8saejk7e \
-BENEFACTOR_KEY=./testnet-keys/benefactor/addr.skey \
-BENEFACTOR_PKH=5729dc6d950bdd7cf60a5c4169119ff2a70f3a8f56b93b056a7eabaf \
-BENEFICIARY=addr_test1qznk843nwlpygv0wk92ykjnfx0u7syagzg44u9deq3sg26w3hvu80mxsh6rmrfg09x6wxkztrn428swfnjmnsvk4mpcqajg9zd \
-BENEFICIARY_KEY=./testnet-keys/beneficiary/addr.skey \
-BENEFICIARY_PKH=a763d63377c24431eeb1544b4a6933f9e813a8122b5e15b904608569 \
-TREASURY=addr_test1qq68t4xndaqqfz5nfhwzz8wcf7nuqz53qssm2ehu06yxpqxt6cxzpd46l9arna6d75yjnfkkkp62066s3wfdrxetds8qclfqcv \
-TREASURY_KEY=./testnet-keys/treasury/addr.skey \
-CONTRACT=$(cat ./output/plutus-scripts/escrow.addr)  \
-SCRIPT_PATH=./output/plutus-scripts/escrow.plutus
-CONTRACT_REFERENCE_TX= \
-DATUM_PATH=./output/datums/example-datum.json \
-CANCEL_REDEEMER_PATH=./output/redeemers/Cancel.json \
-COMPLETE_REDEEMER_PATH=./output/redeemers/Complete.json \
-RECYCLE_REDEEMER_PATH=./output/redeemers/Recycle.json \
-PAYMENT_TOKEN=3e544e20875172fe302df3afdcdaefeba828299e0f89562449845a4f.5049474759 \
-PARAM_PATH=protocol.json \
-NETWORK='--testnet-magic 1' 
+BENEFACTOR=$(cat ./testnet-keys/benefactor/addr) 
+BENEFACTOR_KEY=./testnet-keys/benefactor/addr.skey 
+BENEFACTOR_PKH=5729dc6d950bdd7cf60a5c4169119ff2a70f3a8f56b93b056a7eabaf 
+BENEFICIARY=$(cat ./testnet-keys/beneficiary/addr)
+BENEFICIARY_KEY=./testnet-keys/beneficiary/addr.skey 
+BENEFICIARY_PKH=a763d63377c24431eeb1544b4a6933f9e813a8122b5e15b904608569 
+TREASURY=$(cat ./testnet-keys/treasury/addr) 
+TREASURY_KEY=./testnet-keys/treasury/addr.skey 
+CONTRACT=$(cat ./output/plutus-scripts/escrow.addr)  
+SCRIPT_PATH=./output/plutus-scripts/escrow.plutus 
+CONTRACT_REFERENCE_TX=bbe4fc7fde3ff36730a7b83586df2d7c51284b30b42e09d1581ab455833ecf5b#0
+DATUM_PATH=./output/datums/example-datum.json 
+CANCEL_REDEEMER_PATH=./output/redeemers/Cancel.json 
+COMPLETE_REDEEMER_PATH=./output/redeemers/Complete.json 
+RECYCLE_REDEEMER_PATH=./output/redeemers/Recycle.json 
+PAYMENT_TOKEN=3e544e20875172fe302df3afdcdaefeba828299e0f89562449845a4f.5049474759 
+PARAM_PATH=protocol.json 
+NETWORK='--testnet-magic 1'
 ```
 
 You can also set those aliases to shorten the time needed for entering each command:
@@ -130,12 +130,14 @@ data EscrowDatum = EscrowDatum
     benefactorPkh :: PubKeyHash,
     releaseDate :: POSIXTime,
     cancelDeadline :: POSIXTime,
-    createdAt :: POSIXTime
+    createdAt :: POSIXTime,
+    paymentTokens :: Value
   }
 ```
 
 Change 'createdAt', 'cancelDeadline' & 'releaseDate' inside ./output/datums/example-datum.json
-(json file path: $DATUM_PATH)
+(json file path: $DATUM_PATH). Payment tokens are set to have 25 ADA + 5000 Piggy tokens. 
+You can change them if you want to.
 
 Same goes for the redeemer. There are 3 actions present: Cancel, Complete & Recycle.
 (json file path: $REDEEMER_PATH)
@@ -147,15 +149,15 @@ To check the Haskell implementation, check out this file ./src/Escrow/Types.hs
 - Step 1 - Set Variables:
 
 We will use PIGGY tokens as our additional payment asset.
-Query beneficiary address by running: 
-`cardano-cli query utxo --address $BENEFACTOR $NETWORK`
+Query benefactor address by running: 
+`cardano-cli query utxo --address $BENEFACTOR $NETWORK` or `queryBR`
 and copy the TXIN's together with the Idx number.
 
 ```
-TXIN1=2ca489f3820c4f0689f60ff8d1541bca6e4161de0008768d7b44ba18449c5d00#1
-TXIN2=9e6447dcd4609a75c6e206a4c1336772a312d9689f0be767ae68800e95dece35#0 
+TXIN1=1bd7602ebf49bd133f31781133d9a7ffeff4dbec0157f9cd3c2babc3ee2bf3bd#1
+TXIN2=1bd7602ebf49bd133f31781133d9a7ffeff4dbec0157f9cd3c2babc3ee2bf3bd#2
 AMOUNT_LOVELACE=25000000
-AMOUNT_PAYMENT_TOKEN=5000
+AMOUNT_PAYMENT_TOKEN=1000
 ```
 
 - Step 2 - Build + Submit Tx:
@@ -167,7 +169,7 @@ cardano-cli transaction build \
 --tx-in $TXIN2 \
 --tx-out $CONTRACT+"$AMOUNT_LOVELACE + $AMOUNT_PAYMENT_TOKEN $PAYMENT_TOKEN" \
 --tx-out-inline-datum-file $DATUM_PATH \
---tx-out $BENEFACTOR+"226779677 + 85000 $PAYMENT_TOKEN" \
+--tx-out $BENEFACTOR+"7000000000 + 44000 $PAYMENT_TOKEN" \
 --change-address $BENEFACTOR \
 --protocol-params-file protocol.json \
 --out-file tx.raw \
@@ -176,38 +178,36 @@ $NETWORK
 signBR && submit
 ```
 
-### Test #1: Successful Transaction (without a BetaTester NFT) ❓
+### Test #1: Successful Transaction (without a BetaTester NFT) ❓❓
 
 Query contract and beneficiary addresses to find out the hashes of UTxOs.
 
 Fee is set here to 1.5 ADA because 1% of the total Lovelace amount is less than
 minimum fee amount (1.5 ADA).
 ```
-TXIN1=6a117c86c85b87fcc7c742c5dd3773df70ce052362df0d5de4af50f5c705bef8#0
-TXIN2=6a117c86c85b87fcc7c742c5dd3773df70ce052362df0d5de4af50f5c705bef8#1
-TXIN3=2ca489f3820c4f0689f60ff8d1541bca6e4161de0008768d7b44ba18449c5d00#0
+TXIN1=d17e8441f714be87f0800df99c85b769792641a879f74a236d4a03468da534e3#0
+TXIN2=017fe886cea5486210071eb1ca9f90cf2e014caf7f77132778daf87391c77f60#0
+TXIN3=c901631c583de4dc5d867889d4763337403c0492b76615ae07b58a3feaf38a9b#0
 AMOUNT_FEE=1500000
-AMOUNT_LOVELACE=$(expr 25000000 - $AMOUNT_FEE)
-AMOUNT_PAYMENT_TOKEN=5000
+AMOUNT_LOVELACE=25000000
+AMOUNT_PAYMENT_TOKEN=1000
 VALID_FROM=$(cardano-cli query tip $NETWORK | jq .slot)
 VALID_TO=$(expr $VALID_FROM + 300)
 ```
----  !!! should attach plutus script
 
 After running step #0. Run this terminal command to unlock the funds as a beneficiary.
 We need to provide TX-valid-range that's after the 'releaseDate' specified in Datum.
 
+```
 cardano-cli transaction build \
 --babbage-era \
---tx-in $TXIN3 \
+--tx-in $TXIN1 \
+--tx-in $TXIN2 \
 --tx-in-script-file $SCRIPT_PATH \
 --tx-in-inline-datum-present \
 --tx-in-redeemer-file $COMPLETE_REDEEMER_PATH \
---tx-in-collateral $TXIN2 \
---tx-in $TXIN1 \
---tx-out $BENEFICIARY+"$AMOUNT_LOVELACE + $AMOUNT_PAYMENT_TOKEN $PAYMENT_TOKEN" \
---tx-out $BENEFICIARY+200000000 \
---tx-out $TREASURY+$AMOUNT_FEE \
+--tx-in-collateral $TXIN3 \
+--tx-out $BENEFICIARY+"999999999999 + 9999999 $PAYMENT_TOKEN" \
 --invalid-before $VALID_FROM \
 --invalid-hereafter $VALID_TO \
 --required-signer-hash $BENEFICIARY_PKH \
@@ -229,7 +229,7 @@ TXIN3=<beneficiary UTxO with betaTesterToken>
 TXIN4=<contract UTxO>
 AMOUNT_LOVELACE=25000000
 AMOUNT_PAYMENT_TOKEN=5000
-VALID_FROM=$(cardano-cli query slot-number $NETWORK)
+VALID_FROM=$(cardano-cli query tip $NETWORK | jq .slot)
 VALID_TO=$(expr $VALID_FROM + 300)
 ```
 
@@ -263,86 +263,34 @@ cardano-cli transaction submit \
 --tx-file tx.signed \
 $NETWORK
 
-### Test #3: On-time cancellation
-
+### Test #3: On-time cancellation ❓❓
 
 Query contract and benefactor address to find out the hashes of UTxOs
 ```
-TXIN1=<benefactor UTxO>
-TXIN2=<benefactor collateral UTxO>
-TXIN3=<contract UTxO>
-AMOUNT_LOVELACE=25000000
-AMOUNT_PAYMENT_TOKEN=5000
-```
-
-After running step #0. Run this terminal command to unlock the funds as a beneficiary.
-
-SLOT=61030331
-Note: we can query tip for current slot and use that slot.
-This is like saying "this tx is invalid before now"
-
-cardano-cli transaction build \
---tx-in $TXIN1 \
---tx-in $TXIN2 \
---tx-in $CONTRACTTXIN \
---tx-in-script-file $PLUTUSPATH \
---tx-in-datum-file $DATUM_PATH \
---tx-in-redeemer-file $REDEEMER_PATH \
---tx-in-collateral $COLLATERAL \
---tx-out $ORGANIZER+"$AMOUNT_LOVELACE + $AMOUNT_PAYMENT_TOKEN $PAYMENT_TOKEN" \
---tx-out $ORGANIZER+"2000000 + 1 $ORGANIZERTOKEN" \
---tx-out $TREASURY+"$LOVELACETOTREAS + $GIMBALSTOTREAS $PAYMENT_TOKEN" \
---change-address $ORGANIZER \
---invalid-before $SLOT \
---required-signer-hash $ORGANIZERPKH \
---protocol-params-file protocol.json \
---out-file tx.raw \
---testnet-magic 1
-
-cardano-cli transaction build \
---tx-in $TXIN1 \
---tx-in $TXIN3 \
---tx-in $TXIN4 \
---payment-script-file $CONTRACT \
---tx-in-inline-datum-present \
---tx-in-redeemer-file $REDEEMER_PATH \
---tx-in-collateral $TXIN2 \
---change-address $BENEFACTOR \
---protocol-params-file protocol.json \
---out-file tx.raw \
-$NETWORK
-
-cardano-cli transaction sign \
---signing-key-file $BENEFACTOR_KEY \
---tx-body-file tx.raw \
---out-file tx.signed \
-$NETWORK
-
-cardano-cli transaction submit \
---tx-file tx.signed \
-$NETWORK
-
-### Test #4: Failed cancellation after deadline ✅
-
-```
-TXIN1=2ca489f3820c4f0689f60ff8d1541bca6e4161de0008768d7b44ba18449c5d00#0
-TXIN3=e2c706c6ede119256e380aadae08282e3a2bebcfae4b1e7f367ff958bd23a244#0
-TXIN2=e2c706c6ede119256e380aadae08282e3a2bebcfae4b1e7f367ff958bd23a244#1
+TXIN1=c086ae13ff2152eb7177218679aa8e27abc2a3a9f31dfc6ef7dad6646b19e90a#0
+TXIN2=d31c0669db58f2ebf4c39652f48c3d125c84d4526ca00db37d18eef8d4bdd8ec#0
+TXIN3=d1f815c09577a942c2759a4a480725fe741cd6df818e16725652d427e20b3dbd#0
 AMOUNT_LOVELACE=25000000
 AMOUNT_PAYMENT_TOKEN=5000
 VALID_FROM=$(cardano-cli query tip $NETWORK | jq .slot)
 VALID_TO=$(expr $VALID_FROM + 300)
 ```
 
+After running step #0. Run this terminal command to unlock the funds as a beneficiary.
+
+
+```
 cardano-cli transaction build \
 --babbage-era \
---tx-in $TXIN2 \
 --tx-in $TXIN1 \
---tx-in-script-file $SCRIPT_PATH \
---tx-in-inline-datum-present \
---tx-in-redeemer-file $CANCEL_REDEEMER_PATH \
---tx-in-collateral $TXIN3 \
+--tx-in $TXIN2 \
+--spending-tx-in-reference $CONTRACT_REFERENCE_TX \
+--spending-plutus-script-v2 \
+--spending-reference-tx-in-datum-file $DATUM_PATH \
+--spending-reference-tx-in-redeemer-file $CANCEL_REDEEMER_PATH \
 --tx-out $BENEFACTOR+"$AMOUNT_LOVELACE + $AMOUNT_PAYMENT_TOKEN $PAYMENT_TOKEN" \
+--tx-out $BENEFACTOR+5000000 \
+--tx-in-collateral $TXIN3 \
 --invalid-before $VALID_FROM \
 --invalid-hereafter $VALID_TO \
 --required-signer-hash $BENEFACTOR_PKH \
@@ -354,111 +302,43 @@ $NETWORK
 signBR && submit
 ```
 
-### Test: Resolving Disputes --> Pay to Attendee
-
-
-Note: in this test case, `ADMIN` and `TREASURY` are same addr, but they will not be in Dapp.
-
-cardano-cli transaction build \
---tx-in $TXINADMIN \
---tx-in $TXINFEE \
---tx-in $CONTRACTTXIN \
---tx-in-script-file $PLUTUSPATH \
---tx-in-datum-file $DATUM_PATH \
---tx-in-redeemer-file $REDEEMER_PATH \
---tx-in-collateral $COLLATERAL \
---tx-out $BENEFACTOR+"$LOVELACETOATT + $GIMBALSTOATT $PAYMENT_TOKEN" \
---tx-out $TREASURY+"$LOVELACETOTREAS + $GIMBALSTOTREAS $PAYMENT_TOKEN" \
---tx-out $ADMIN+"2000000 + 1 $ADMINTOKEN" \
---change-address $ADMIN \
---protocol-params-file protocol.json \
---out-file tx.raw \
---testnet-magic 1
-
-cardano-cli transaction sign \
---signing-key-file $ADMINKEY \
---testnet-magic 1 \
---tx-body-file tx.raw \
---out-file tx.signed
-
-cardano-cli transaction submit \
---tx-file tx.signed \
---testnet-magic 1
-
-### Test: Resolving Disputes --> Pay to Organizer
-
-
-
-Note: in this test case, `ADMIN` and `TREASURY` are same addr, but they will not be in Dapp.
-
-cardano-cli transaction build \
---tx-in $TXINADMIN \
---tx-in $TXINFEE \
---tx-in $CONTRACTTXIN \
---tx-in-script-file $PLUTUSPATH \
---tx-in-datum-file $DATUM_PATH \
---tx-in-redeemer-file $REDEEMER_PATH \
---tx-in-collateral $COLLATERAL \
---tx-out $ORGANIZER+"$LOVELACETOORG + $GIMBALSTOORG $PAYMENT_TOKEN" \
---tx-out $TREASURY+"$LOVELACETOTREAS + $GIMBALSTOTREAS $PAYMENT_TOKEN" \
---tx-out $ADMIN+"2000000 + 1 $ADMINTOKEN" \
---change-address $ADMIN \
---protocol-params-file protocol.json \
---out-file tx.raw \
---testnet-magic 1
-
-cardano-cli transaction sign \
---signing-key-file $ADMINKEY \
---testnet-magic 1 \
---tx-body-file tx.raw \
---out-file tx.signed
-
-cardano-cli transaction submit \
---tx-file tx.signed \
---testnet-magic 1
-
-### Test: Resolving Disputes --> Split
-
-Note 16 June - Need to recompile contracts to fix 45/10 error.
-
-````
-
-
-Note: in this test case, `ADMIN` and `TREASURY` are same addr, but they will not be in Dapp.
-
-cardano-cli transaction build \
---tx-in $TXINADMIN \
---tx-in $TXINFEE \
---tx-in $CONTRACTTXIN \
---tx-in-script-file $PLUTUSPATH \
---tx-in-datum-file $DATUM_PATH \
---tx-in-redeemer-file $REDEEMER_PATH \
---tx-in-collateral $COLLATERAL \
---tx-out $ORGANIZER+"$LOVELACETOORG + $GIMBALSTOORG $PAYMENT_TOKEN" \
---tx-out $BENEFACTOR+"$LOVELACETOATT + $GIMBALSTOATT $PAYMENT_TOKEN" \
---tx-out $TREASURY+"$LOVELACETOTREAS + $GIMBALSTOTREAS $PAYMENT_TOKEN" \
---tx-out $ADMIN+"2000000 + 1 $ADMINTOKEN" \
---change-address $ADMIN \
---protocol-params-file protocol.json \
---out-file tx.raw \
---testnet-magic 1
-
-cardano-cli transaction sign \
---signing-key-file $ADMINKEY \
---testnet-magic 1 \
---tx-body-file tx.raw \
---out-file tx.signed
-
-cardano-cli transaction submit \
---tx-file tx.signed \
---testnet-magic 1
+### Test #4: Failed cancellation after deadline ✅
 
 ```
-
-## Unlocking Event UTXOs
-
+TXIN1=c086ae13ff2152eb7177218679aa8e27abc2a3a9f31dfc6ef7dad6646b19e90a#0
+TXIN2=659efae7c08bc099a89e8632ed76428d16691a90180a39b604eb75251a31ce48#0
+TXIN3=d1f815c09577a942c2759a4a480725fe741cd6df818e16725652d427e20b3dbd#0
+AMOUNT_LOVELACE=25000000
+AMOUNT_PAYMENT_TOKEN=5000
+VALID_FROM=$(cardano-cli query tip $NETWORK | jq .slot)
+VALID_TO=$(expr $VALID_FROM + 300)
 ```
 
+```
+cardano-cli transaction build \
+--babbage-era \
+--tx-in $TXIN1 \
+--tx-in $TXIN2 \
+--spending-tx-in-reference $CONTRACT_REFERENCE_TX \
+--spending-plutus-script-v2 \
+--spending-reference-tx-in-inline-datum-present \
+--spending-reference-tx-in-redeemer-file $CANCEL_REDEEMER_PATH \
+--tx-out $BENEFACTOR+"$AMOUNT_LOVELACE + $AMOUNT_PAYMENT_TOKEN $PAYMENT_TOKEN" \
+--tx-in-collateral $TXIN3 \
+--invalid-before $VALID_FROM \
+--invalid-hereafter $VALID_TO \
+--required-signer-hash $BENEFACTOR_PKH \
+--change-address $BENEFACTOR \
+--protocol-params-file protocol.json \
+--out-file tx.raw \
+$NETWORK
+
+signBR && submit
+```
+
+### Test #5: Failed withdraw before release window
+
+```
 CONTRACTADDR=""
 BENEFACTOR=""
 ORGANIZER=""
@@ -469,7 +349,6 @@ COLLATERAL="#10"
 ```
 
 ```
-
 cardano-cli transaction build \
 --tx-in $CONTRACTTXIN \
 --tx-in-script-file bonfire-escrow-000.plutus \
@@ -515,57 +394,5 @@ cardano-cli transaction submit \
 
 ---
 
-## Quick Tx
+#### Special thanks to Gimbalabs community for the initial help.
 
-```
-
-cardano-cli transaction build \
---tx-in $TXIN \
---tx-out $ORGANIZER+20000000 \
---tx-out $ORGANIZER+20000000 \
---tx-out $ORGANIZER+20000000 \
---tx-out $ORGANIZER+20000000 \
---change-address $ORGANIZER \
---protocol-params-file protocol.json \
---out-file tx.raw \
---testnet-magic 1
-
-cardano-cli transaction sign \
---signing-key-file $ORGANIZERKEY \
---testnet-magic 1 \
---tx-body-file tx.raw \
---out-file tx.signed
-
-cardano-cli transaction submit \
---tx-file tx.signed \
---testnet-magic 1
-
-```
-
-## Quick Send bonGimbals TX
-
-```
-
-cardano-cli transaction build \
---tx-in $TXIN1 \
---tx-in $TXIN2 \
---tx-out $BENEFACTOR+"100000000 + 5000000 982ff92902a6d9c547506a9d53f342899857562f30f51c0232fb668e.626f6e47696d62616c" \
---change-address $MONDAY \
---protocol-params-file protocol.json \
---out-file tx.raw \
---testnet-magic 1
-
-cardano-cli transaction sign \
---signing-key-file $MONDAYKEY \
---testnet-magic 1 \
---tx-body-file tx.raw \
---out-file tx.signed
-
-cardano-cli transaction submit \
---tx-file tx.signed \
---testnet-magic 1
-
-```
-
-Special thanks to Gimbalabs community for the initial help.
-```

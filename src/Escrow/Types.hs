@@ -71,11 +71,11 @@ piggyToken = TokenName $ stringToBuiltinByteString "PIGGY"
 
 -- Create a Value with 100 ADA
 adaValue :: Value
-adaValue = singleton adaSymbol adaToken 25
+adaValue = singleton adaSymbol adaToken 25_000_000
 
 -- Create a Value with 1000 PIGGY tokens
 piggyValue :: Value
-piggyValue = singleton piggySymbol piggyToken 5000
+piggyValue = singleton piggySymbol piggyToken 1000
 
 -- Combine the ADA and PIGGY Values
 totalValue :: Value

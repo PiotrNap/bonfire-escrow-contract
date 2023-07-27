@@ -10,7 +10,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NumericUnderscores #-}
 
-module Escrow.EscrowContract (validator, validatorHash) where
+module Escrow.EscrowContract (validator, validatorHash ) where
 
 import Escrow.Types
 import Ledger (contains)
@@ -43,7 +43,8 @@ mkValidator param datum action ctx =
        && traceIfFalse "The cancellation deadline has passed" beforeCancelDeadline
         && traceIfFalse "Output must be sent to benefactor" (sufficientOutputTo benefactor)
     Complete ->
-        traceIfFalse "It is too early to collect" afterReleaseDate
+        traceIfFalse "Completion Tx must be sign by beneficiary" (signedBy beneficiary)
+        && traceIfFalse "It is too early to collect" afterReleaseDate
         && traceIfFalse "Output must be sent to beneficiary" (sufficientOutputTo beneficiary)
         && traceIfFalse "Fee must be sent to the treasury" sufficientFeeToTreasury
     Recycle ->
@@ -60,7 +61,6 @@ mkValidator param datum action ctx =
     benefactor = benefactorPkh datum
     beneficiary = beneficiaryPkh datum
     treasury = treasuryPkh param
-    valueTo pkh = valuePaidTo info pkh
     ownInput = findOwnInput ctx
 
     --- Functions ---
@@ -79,10 +79,7 @@ mkValidator param datum action ctx =
              else Ada.lovelaceValueOf lovelaceByFeeRate
 
     sufficientOutputTo :: PubKeyHash -> Bool
-    sufficientOutputTo pkh 
-        | (pkh == benefactor) || (pkh == treasury) = valueTo pkh `geq` paymentTokens datum
-        | pkh == beneficiary = (valueTo pkh - serviceFeeValue) `geq` (paymentTokens datum - serviceFeeValue)
-        | otherwise = False
+    sufficientOutputTo pkh = valuePaidTo info pkh `geq` paymentTokens datum
 
     signedBy :: PubKeyHash -> Bool
     signedBy = txSignedBy info
@@ -97,7 +94,7 @@ mkValidator param datum action ctx =
     afterReleaseDate = contains (from $ releaseDate datum) $ txInfoValidRange info
 
     sufficientFeeToTreasury :: Bool
-    sufficientFeeToTreasury = valueTo treasury == serviceFeeValue
+    sufficientFeeToTreasury = isBetaTesterTokenPresent || (valuePaidTo info treasury == serviceFeeValue)
 
     utxoOlderThanOneYear :: Bool
     utxoOlderThanOneYear =

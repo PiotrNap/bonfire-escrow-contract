@@ -1,0 +1,138 @@
+spending escrow_contract
+
+struct Datum {
+    beneficiaryPkh : PubKeyHash
+    benefactorPkh : PubKeyHash
+    releaseDate : Time
+    cancelFee: Int // % of paymentTokens
+    // using Time because TimeRange is not implemented yet offchain
+    cancelWindowStart: Time 
+    cancelWindowEnd: Time
+    createdAt : Time
+    paymentTokens : Value
+}
+
+// TxIn -> ByteArray , TxIndex -> Int
+enum Redeemer { 
+    Cancel {
+        txOutId: TxOutputId
+    }
+    Complete {
+        txOutIds: []TxOutputId
+    }
+    Recycle
+}
+
+const TREASURY_PKH: ByteArray = #ab87ac75a812bbf7e7710f809205a9638732f259e48ca1e7bf7608a9
+const treasuryPkh: PubKeyHash = PubKeyHash::new(TREASURY_PKH)
+
+const BETA_TESTER_MPH: ByteArray = #481146d15d0c9bacc880254f88f944f6a88dba2e917d35fcbf92aa24
+const betaTesterMph: MintingPolicyHash = MintingPolicyHash::new(BETA_TESTER_MPH)
+
+const minServiceFee: Int = 1500000
+const oneYearTime: Duration = Duration::new(1000 * 60 * 60 * 24 * 365)
+
+func getServiceFeeAmnt(lovelacePayout: Int, withBetaTesterToken: Bool) -> Value {
+    if (withBetaTesterToken) {
+        Value::lovelace(0)
+    } else if ( lovelacePayout / 100 < minServiceFee ) {
+        Value::lovelace(minServiceFee)
+    } else {
+        Value::lovelace(lovelacePayout / 100)
+    }
+}
+
+func checkInputForBetaTesterToken(txIn: TxInput) -> Bool {
+    txIn.value.contains_policy(betaTesterMph)
+}
+
+/**
+* This validator should meet the following requirements:
+* 
+*  1. Allow to cancel a transaction by one of two parties transacting with each other
+*  2. Allow to cancel only before the cancellation deadline
+*  3. Ensure all the funds are returned to benefactor during on-time cancellation 
+*  4. Prevent from collecting funds before release date
+*  5. Allow to collect funds after release date by beneficiary
+*  6. Check whether sufficient fee was sent to the treasury (if any)
+*  7. Allow to recycle UTxOs older than 1 year by a treasury
+*/
+
+func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
+    tx: Tx = ctx.tx;
+    benefactorPkh: PubKeyHash = datum.benefactorPkh;
+    beneficiaryPkh: PubKeyHash = datum.beneficiaryPkh;
+    now: Time = tx.time_range.start;
+    betaTesterTokenPresent: Bool = tx.inputs.any(checkInputForBetaTesterToken);
+
+    // How to handle `txOutIds` with different beneficiary's or benefactor's ?
+
+    redeemer.switch {
+        cancelR: Cancel => {
+            cancelWindow: TimeRange = TimeRange::new(datum.cancelWindowStart, datum.cancelWindowEnd);
+            // check if throws an error
+            redemeerTxOutValue: Value = tx.inputs.find((in: TxInput) -> {
+                in.output_id == cancelR.txOutId
+            }).value;
+
+            (cancelWindow.is_after(now)).trace("ESC1: ") && 
+
+            (if(cancelWindow.contains(now)) {
+                if(tx.is_signed_by(benefactorPkh)) {
+                    cFee: Value = redemeerTxOutValue * (datum.cancelFee / 100);
+
+                    if (cFee.get_lovelace() < 2_000_000) {
+                        newCFee: Value = cFee + Value::lovelace(2_000_000 - cFee.get_lovelace());
+                        
+                        tx.value_sent_to(benefactorPkh) - newCFee >= redemeerTxOutValue - newCFee 
+                        && tx.value_sent_to(beneficiaryPkh) == newCFee
+
+                    } else {
+                        tx.value_sent_to(benefactorPkh) - cFee >= redemeerTxOutValue - cFee 
+                        && tx.value_sent_to(beneficiaryPkh) == cFee
+                    }
+
+                } else if (tx.is_signed_by(beneficiaryPkh)){
+                     tx.value_sent_to(benefactorPkh) >= redemeerTxOutValue 
+
+                // incorrect signature
+                } else {
+                   false 
+                }
+            } else {
+                tx.value_sent_to(benefactorPkh) >= redemeerTxOutValue
+            }).trace("ESC2: ")
+        },
+        completeR: Complete => {
+            redemeerTxOutsValue: Value = tx.inputs.filter((txIn: TxInput) -> {
+                                              completeR.txOutIds.any((txOutId: TxOutputId) -> {
+                                                 txOutId == txIn.output_id
+                                                 })
+                                             }).fold((acc: Value, txIn: TxInput) -> Value {
+                                                 acc + txIn.value
+                                             },Value::ZERO);
+            serviceFee: Value = getServiceFeeAmnt(redemeerTxOutsValue.get_lovelace(), betaTesterTokenPresent);
+
+            // Works
+           (now > datum.releaseDate).trace("ESC3: ") &&
+
+            // Works
+           (tx.is_signed_by(beneficiaryPkh)).trace("ESC4: ") &&
+
+           // ???
+           (tx.value_sent_to(beneficiaryPkh) - serviceFee >= redemeerTxOutsValue - serviceFee)
+           .trace("ESC5: ") &&
+
+           // Check whether enough fee (if any) is sent to treasury
+           (tx.value_sent_to(treasuryPkh) == serviceFee)
+           .trace("ESC6: ")
+        },
+        Recycle => {
+           // Check if treasury have signed the tx
+           (tx.is_signed_by(treasuryPkh)).trace("ESC7: ") &&
+
+           // Check if utxo is older than 1 year
+           (now > datum.createdAt + oneYearTime).trace("ESC8: ")
+        }
+    }
+}

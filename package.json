@@ -1,11 +1,17 @@
 {
   "scripts": {
     "test": "vitest",
-    "test:debug": "vitest --inspect-brk --single-thread"
+    "test:debug": "vitest --inspect-brk --single-thread",
+    "build": "node ./utils/helios.js"
   },
-  "dependencies": {},
+  "type": "module",
   "devDependencies": {
-    "@hyperionbt/helios": "^0.14.4",
+    "@hyperionbt/helios": "^0.15.2",
+    "@typescript-eslint/eslint-plugin": "^6.2.0",
+    "@typescript-eslint/parser": "^6.2.0",
+    "eslint": "^8.46.0",
+    "fast-check": "^3.12.0",
+    "lucid-cardano": "^0.10.7",
     "vitest": "^0.33.0"
   }
 }

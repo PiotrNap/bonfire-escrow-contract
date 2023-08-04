@@ -1,7 +1,0 @@
-Warning: Requested index-state 2021-10-20T00:00:00Z is newer than
-'hackage.haskell.org'! Falling back to older state (2021-10-19T23:39:06Z).
-Resolving dependencies...
-Build profile: -w ghc-8.10.4.20210212 -O1
-In order, the following will be built (use -v for more details):
- - escrow-contract-1.0.0.0 (lib) (configuration changed)
-Configuring library for escrow-contract-1.0.0.0..

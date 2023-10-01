@@ -61,7 +61,7 @@ func checkInputForBetaTesterToken(txIn: TxInput) -> Bool {
 *  4. Prevent from collecting funds before release date
 *  5. Allow to collect funds after release date by beneficiary
 *  6. Check whether sufficient fee was sent to the treasury (if any)
-*  7. Allow to recycle UTxOs older than 1 year by a treasury
+*  7. Allow to recycle UTxOs older than 1 year by the treasury
 */
 
 func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
@@ -119,7 +119,7 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
 
            (now > datum.releaseDate).trace("Cmplt2") &&
 
-           (tx.value_sent_to(beneficiaryPkh) - serviceFee >= redeemerTxOutsValue - serviceFee)
+           (tx.value_sent_to(beneficiaryPkh) >= redeemerTxOutsValue)
            .trace("Cmplt3") &&
 
            (tx.value_sent_to(treasuryPkh) == serviceFee)

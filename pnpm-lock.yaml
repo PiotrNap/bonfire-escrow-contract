@@ -6,8 +6,8 @@ settings:
 
 devDependencies:
   '@hyperionbt/helios':
-    specifier: ^0.15.2
-    version: 0.15.2
+    specifier: ^0.15.11
+    version: 0.15.11
   '@typescript-eslint/eslint-plugin':
     specifier: ^6.2.0
     version: 6.2.0(@typescript-eslint/parser@6.2.0)(eslint@8.46.0)(typescript@5.1.6)
@@ -289,8 +289,8 @@ packages:
     resolution: {integrity: sha512-ZnQMnLV4e7hDlUvw8H+U8ASL02SS2Gn6+9Ac3wGGLIe7+je2AeAOxPY+izIPJDfFDb7eDjev0Us8MO1iFRN8hA==}
     dev: true
 
-  /@hyperionbt/helios@0.15.2:
-    resolution: {integrity: sha512-CKWJkC7ArWcTl53Xg6ICO/cUti76nXpijGlyOfKKb33osd0QegQfxRvF5xyjyLizcrJcPxhWbjyTRMBKVYwUiw==}
+  /@hyperionbt/helios@0.15.11:
+    resolution: {integrity: sha512-Dr48bPRTTsmrhlrtNFWg0HK6i59A2matsPrQimu3a6VhaAsXp1Sc3uYQGYyPJPa4eN72hxDC6QBCMnDOpqbBsA==}
     dev: true
 
   /@jest/schemas@29.6.0:

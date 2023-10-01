@@ -12,18 +12,24 @@ struct Datum {
     paymentTokens : Value
 }
 
+struct TxOutId {
+    txId: TxId // hash of transaction
+    utxoIdx: Int 
+}
+
 // TxIn -> ByteArray , TxIndex -> Int
 enum Redeemer { 
     Cancel {
-        txOutId: TxOutputId
+        txId: TxId
+        utxoIdx: Int
     }
     Complete {
-        txOutIds: []TxOutputId
+        txOutIds: []TxOutId
     }
     Recycle
 }
 
-const TREASURY_PKH: ByteArray = #ab87ac75a812bbf7e7710f809205a9638732f259e48ca1e7bf7608a9
+const TREASURY_PKH: ByteArray = #86de9a90be33e317c56ce862c737267dcd4a2daade25a4b7a7321acd
 const treasuryPkh: PubKeyHash = PubKeyHash::new(TREASURY_PKH)
 
 const BETA_TESTER_MPH: ByteArray = #481146d15d0c9bacc880254f88f944f6a88dba2e917d35fcbf92aa24
@@ -70,69 +76,59 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     redeemer.switch {
         cancelR: Cancel => {
             cancelWindow: TimeRange = TimeRange::new(datum.cancelWindowStart, datum.cancelWindowEnd);
-            // check if throws an error
-            redemeerTxOutValue: Value = tx.inputs.find((in: TxInput) -> {
-                in.output_id == cancelR.txOutId
+            redeemerTxOutValue: Value = tx.inputs.find((in: TxInput) -> {
+                in.output_id.index == cancelR.utxoIdx &&
+                in.output_id.tx_id == cancelR.txId
             }).value;
 
-            (cancelWindow.is_after(now)).trace("ESC1: ") && 
+            (datum.cancelWindowEnd > now).trace("Cancel1: ") && 
 
-            (if(cancelWindow.contains(now)) {
+            if(cancelWindow.contains(now)) {
                 if(tx.is_signed_by(benefactorPkh)) {
-                    cFee: Value = redemeerTxOutValue * (datum.cancelFee / 100);
+                    cFeeLove: Int = redeemerTxOutValue.get_lovelace() * (datum.cancelFee / 100);
 
-                    if (cFee.get_lovelace() < 2_000_000) {
-                        newCFee: Value = cFee + Value::lovelace(2_000_000 - cFee.get_lovelace());
-                        
-                        tx.value_sent_to(benefactorPkh) - newCFee >= redemeerTxOutValue - newCFee 
-                        && tx.value_sent_to(beneficiaryPkh) == newCFee
-
+                    // must return all payment tokens
+                    (tx.value_sent_to(benefactorPkh) >= redeemerTxOutValue).trace("Cancel2") &&
+                
+                    if (cFeeLove < 2_000_000) {
+                        (tx.value_sent_to(beneficiaryPkh).get_lovelace() >= 2_000_000).trace("Cancel3")
                     } else {
-                        tx.value_sent_to(benefactorPkh) - cFee >= redemeerTxOutValue - cFee 
-                        && tx.value_sent_to(beneficiaryPkh) == cFee
+                        (tx.value_sent_to(beneficiaryPkh).get_lovelace() >= cFeeLove).trace("Cancel4")
                     }
-
                 } else if (tx.is_signed_by(beneficiaryPkh)){
-                     tx.value_sent_to(benefactorPkh) >= redemeerTxOutValue 
-
-                // incorrect signature
+                    (tx.value_sent_to(benefactorPkh) >= redeemerTxOutValue).trace("Cancel5")
                 } else {
-                   false 
+                    false
                 }
             } else {
-                tx.value_sent_to(benefactorPkh) >= redemeerTxOutValue
-            }).trace("ESC2: ")
+                (tx.value_sent_to(benefactorPkh) >= redeemerTxOutValue).trace("Cancel6")
+            }
         },
         completeR: Complete => {
-            redemeerTxOutsValue: Value = tx.inputs.filter((txIn: TxInput) -> {
-                                              completeR.txOutIds.any((txOutId: TxOutputId) -> {
-                                                 txOutId == txIn.output_id
-                                                 })
-                                             }).fold((acc: Value, txIn: TxInput) -> Value {
-                                                 acc + txIn.value
-                                             },Value::ZERO);
-            serviceFee: Value = getServiceFeeAmnt(redemeerTxOutsValue.get_lovelace(), betaTesterTokenPresent);
+            redeemerTxOutsValue: Value = tx.inputs.filter((txIn: TxInput) -> {
+                                 completeR.txOutIds.any((txOutId: TxOutId) -> {
+                                    txOutId.utxoIdx == txIn.output_id.index &&
+                                    txOutId.txId == txIn.output_id.tx_id
+                                    })
+                                }).fold((acc: Value, txIn: TxInput) -> Value {
+                                    acc + txIn.value
+                                },Value::ZERO);
+            serviceFee: Value = getServiceFeeAmnt(redeemerTxOutsValue.get_lovelace(), betaTesterTokenPresent);
 
-            // Works
-           (now > datum.releaseDate).trace("ESC3: ") &&
+           (tx.is_signed_by(beneficiaryPkh)).trace("Cmplt1") &&
 
-            // Works
-           (tx.is_signed_by(beneficiaryPkh)).trace("ESC4: ") &&
+           (now > datum.releaseDate).trace("Cmplt2") &&
 
-           // ???
-           (tx.value_sent_to(beneficiaryPkh) - serviceFee >= redemeerTxOutsValue - serviceFee)
-           .trace("ESC5: ") &&
+           (tx.value_sent_to(beneficiaryPkh) - serviceFee >= redeemerTxOutsValue - serviceFee)
+           .trace("Cmplt3") &&
 
-           // Check whether enough fee (if any) is sent to treasury
            (tx.value_sent_to(treasuryPkh) == serviceFee)
-           .trace("ESC6: ")
+           .trace("Cmplt4")
         },
         Recycle => {
-           // Check if treasury have signed the tx
-           (tx.is_signed_by(treasuryPkh)).trace("ESC7: ") &&
+           (tx.is_signed_by(treasuryPkh)).trace("Recycle1") &&
 
-           // Check if utxo is older than 1 year
-           (now > datum.createdAt + oneYearTime).trace("ESC8: ")
+           (now > datum.createdAt + oneYearTime).trace("Recycle2")
         }
     }
 }

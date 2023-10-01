@@ -4,7 +4,7 @@ import { cwd } from "process"
 
 const dir = cwd()
 const donationSrc = (
-  await fs.readFile(`${dir}/src/Escrow/EscrowContract.hl`)
+  await fs.readFile(`${dir}/src/Escrow/helios/EscrowContract.hl`)
 ).toString()
 const program = helios.Program.new(donationSrc)
 const simplify = false

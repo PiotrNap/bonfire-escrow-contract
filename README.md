@@ -17,7 +17,7 @@ All UTxOs older than 1 year are eligible for withdraw by the service provider.
 There are two contracts: one written in Plutus (not completed & not tested), and one written in Helios language
 (completed & fully tested).
 
-Tests were done by using Vite.js and Helios.js, and can be previed in file "escrow.test.ts".
+Tests were done by using Vite.js and Helios.js, and can be previewed in file "escrow.test.ts".
 
 ### Parameters
 
@@ -27,7 +27,6 @@ Tests were done by using Vite.js and Helios.js, and can be previed in file "escr
 ### Data structures
 
 1. Datum
-
    - benefactorPkh & beneficiaryPkh - public key hashes of both parties who are exchanging crypto assets
    - releaseDate - time after which beneficiary is eligible to collect the payment
    - cancelFee - lovelace fee applied during cancelation by benefactor within allowed time window (expressed in % of total Lovelace assets value)
@@ -44,49 +43,49 @@ Tests were done by using Vite.js and Helios.js, and can be previed in file "escr
 
 The following scenarios were tested:
 
-#### A' (benefactor) O' (beneficiary) T' (treasury)
+#### BR' (benefactor) BY' (beneficiary) T' (treasury)
 
 1. Successful transaction
 
-   - A' locks funds into contract
-   - O' unlocks the funds after a release window
+   - BR' locks funds into contract
+   - BY' unlocks the funds after a release window
    - T' receives fees for successful deal
 
 2. Successful transaction (with a BetaTester NFT)
 
-   - A' locks funds into contract
-   - O' tries to unlock the funds after a release window with BetaTester NFT
+   - BR' locks funds into contract
+   - BY' unlocks the funds after a release window with BetaTester NFT
    - T' does not receive any fee
 
 3. On-time cancellation
 
-   - A' locks funds into contract
-   - A' unlocks the funds before cancellation deadline
+   - BR' locks funds into contract
+   - BR' unlocks the funds before cancellation deadline
 
 4. Failed cancellation after deadline
 
-   - A' locks funds into contract
-   - A' tries to cancel (return) funds after deadline and fails
+   - BR' locks funds into contract
+   - BR' tries to cancel (return) funds after deadline and fails
 
 5. Failed withdrawal before release window
 
-   - A' locks funds into contract
-   - O' fails to withdraw funds before release window
+   - BR' locks funds into contract
+   - BY' fails to withdraw funds before release window
 
 6. Failed attempt to collect funds by any outside party
 
-   - A' locks funds into contract
-   - a malicious actor (not A' or O') fails to collect funds:
+   - BR' locks funds into contract
+   - a malicious actor (not BR' or BY') fails to collect funds:
      a) before cancellation deadline
      b) after release window
 
 7. Successful recycle of UTxOs older than 1 year
 
-   - A' locks funds into contract
+   - BR' locks funds into contract
    - T' withdraws UTxO after 1 year
 
 8. Failed recycle of UTxOs younger than 1 year
-   - A' locks funds into contract
+   - BR' locks funds into contract
    - T' fails to withdraw UTxO before 1 year
 
 #### How to run it.

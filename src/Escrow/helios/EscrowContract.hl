@@ -5,7 +5,6 @@ struct Datum {
     benefactorPkh : PubKeyHash
     releaseDate : Time
     cancelFee: Int // % of paymentTokens
-    // using Time because TimeRange is not implemented yet offchain
     cancelWindowStart: Time 
     cancelWindowEnd: Time
     createdAt : Time
@@ -17,7 +16,6 @@ struct TxOutId {
     utxoIdx: Int 
 }
 
-// TxIn -> ByteArray , TxIndex -> Int
 enum Redeemer { 
     Cancel {
         txId: TxId
@@ -36,7 +34,6 @@ const BETA_TESTER_MPH: ByteArray = #481146d15d0c9bacc880254f88f944f6a88dba2e917d
 const betaTesterMph: MintingPolicyHash = MintingPolicyHash::new(BETA_TESTER_MPH)
 
 const minServiceFee: Int = 1500000
-const oneYearTime: Duration = Duration::new(1000 * 60 * 60 * 24 * 365)
 
 func getServiceFeeAmnt(lovelacePayout: Int, withBetaTesterToken: Bool) -> Value {
     if (withBetaTesterToken) {
@@ -70,6 +67,7 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     beneficiaryPkh: PubKeyHash = datum.beneficiaryPkh;
     now: Time = tx.time_range.start;
     betaTesterTokenPresent: Bool = tx.inputs.any(checkInputForBetaTesterToken);
+    oneYearTime: Duration = Duration::new(1000 * 60 * 60 * 24 * 365);
 
     // How to handle `txOutIds` with different beneficiary's or benefactor's ?
 

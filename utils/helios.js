@@ -3,10 +3,10 @@ import fs from "fs/promises"
 import { cwd } from "process"
 
 const dir = cwd()
-const donationSrc = (
+const escrowSrc = (
   await fs.readFile(`${dir}/src/Escrow/helios/EscrowContract.hl`)
 ).toString()
-const program = helios.Program.new(donationSrc)
+const program = helios.Program.new(escrowSrc)
 const simplify = false
 const uplcProgram = program.compile(simplify)
 

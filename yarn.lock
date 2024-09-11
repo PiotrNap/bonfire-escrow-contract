@@ -149,6 +149,208 @@
   resolved "https://registry.yarnpkg.com/@eslint/js/-/js-8.46.0.tgz#3f7802972e8b6fe3f88ed1aabc74ec596c456db6"
   integrity sha512-a8TLtmPi8xzPkCbp/OGFUo5yhRkHM2Ko9kOWP4znJr0WAhWyThaw3PnwX4vOTWOAMsV2uRt32PPDcEz63esSaA==
 
+"@helios-lang/cbor@^0.1.21":
+  version "0.1.21"
+  resolved "https://registry.yarnpkg.com/@helios-lang/cbor/-/cbor-0.1.21.tgz#1e419c739fe34344c32bea6447f6a5d08f97a82a"
+  integrity sha512-EHIKmN1fDPtEwjvPHCjCHf3JtCK2j09z6dwTiSI4HJ7sl62nr5Ti1B0/EkiKrahfKQnYl/wgtVyKoY/qgIJQMw==
+  dependencies:
+    "@helios-lang/codec-utils" "^0.1.30"
+    "@helios-lang/type-utils" "^0.1.18"
+
+"@helios-lang/cli-utils@^0.1.6":
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/@helios-lang/cli-utils/-/cli-utils-0.1.6.tgz#e19cadc3408c3f0351bf808c0df40ae7eff44ce8"
+  integrity sha512-yJd7bJR2N1AR2DbH6GQRq4nRB91QUyEQf6vJzMNTmEqtQoofhGDSJ3N8NDr5NIcDbcBgfJhUqdnOi9vmmewxAg==
+  dependencies:
+    "@helios-lang/codec-utils" "^0.1.30"
+    "@helios-lang/type-utils" "^0.1.18"
+
+"@helios-lang/codec-utils@^0.1.30", "@helios-lang/codec-utils@^0.1.32", "@helios-lang/codec-utils@^0.1.33", "@helios-lang/codec-utils@^0.1.34":
+  version "0.1.34"
+  resolved "https://registry.yarnpkg.com/@helios-lang/codec-utils/-/codec-utils-0.1.34.tgz#908ba712ebe77c56dfa8c304577d90f84c7a425a"
+  integrity sha512-SDZNVFDRzBN3Z7TyVmYzSa74YAtP2O5sB8hOySkFX0SwjUIDMW3XRjM0pj8EGrMHFrMbWd1MTG+31ysJ30lNkw==
+
+"@helios-lang/compat@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@helios-lang/compat/-/compat-0.1.1.tgz#eab28b0fcec2c6b182b29186266cef806ade7b01"
+  integrity sha512-NdsuVlPdEf/r2kkEwe16wKMx4zXyAQT58TUM1VqYDjWTrVrRXB2Xt+pIBwvL3Z4xwM3eBHbovqlHHkubH9Y/BA==
+  dependencies:
+    "@helios-lang/codec-utils" "^0.1.33"
+    "@helios-lang/compiler" "^0.17.0-59"
+    "@helios-lang/crypto" "^0.1.14"
+    "@helios-lang/ledger" "^0.4.3"
+    "@helios-lang/tx-utils" "^0.1.70"
+    "@helios-lang/uplc" "^0.2.0"
+
+"@helios-lang/compiler-utils@^0.1.25", "@helios-lang/compiler-utils@^0.1.53", "@helios-lang/compiler-utils@^0.1.54":
+  version "0.1.54"
+  resolved "https://registry.yarnpkg.com/@helios-lang/compiler-utils/-/compiler-utils-0.1.54.tgz#147084ae6fa02a652e302e96c30ce3402ebab0f3"
+  integrity sha512-Yco1TszlczuEfrDuaFRbjSYcNglROJ8vaWI0/LPlUSOM7jdh9/5fRT/jmXGXClCsdUKM7uissb1qHNk/EB2vww==
+  dependencies:
+    "@helios-lang/codec-utils" "^0.1.30"
+    "@helios-lang/type-utils" "^0.1.18"
+
+"@helios-lang/compiler@^0.17.0-59":
+  version "0.17.0-74"
+  resolved "https://registry.yarnpkg.com/@helios-lang/compiler/-/compiler-0.17.0-74.tgz#d9cda58c6d89cfcba3747d85361f959a853649b4"
+  integrity sha512-ncPGCCqE0D6W/X59V3ZmmO20SzzKN3of+mC0ryetW3SLyOTJJdYkYhJ39dsmRbEpBjgQhubNPb9z7SBkFhCaKw==
+  dependencies:
+    "@helios-lang/codec-utils" "^0.1.32"
+    "@helios-lang/compiler-utils" "^0.1.54"
+    "@helios-lang/ir" "^0.1.34"
+    "@helios-lang/type-utils" "^0.1.21"
+    "@helios-lang/uplc" "^0.3.3"
+
+"@helios-lang/contract-utils@^0.2.52":
+  version "0.2.52"
+  resolved "https://registry.yarnpkg.com/@helios-lang/contract-utils/-/contract-utils-0.2.52.tgz#9e8e7c857c477b2034b6ead3b2e326e836ffe731"
+  integrity sha512-uJ98aOqmixHlpIfniFXLmhgpMl2znQAbbBV3CqGA+1EI+KyOADItcoD5Ewdy4bke/HRADKxQXBxsGcR5HjOq3g==
+  dependencies:
+    "@helios-lang/cli-utils" "^0.1.6"
+    "@helios-lang/codec-utils" "^0.1.34"
+    "@helios-lang/compiler-utils" "^0.1.25"
+    "@helios-lang/ledger" "^0.4.9"
+    "@helios-lang/type-utils" "^0.1.21"
+    "@helios-lang/uplc" "^0.3.5"
+
+"@helios-lang/crypto@^0.1.14", "@helios-lang/crypto@^0.1.9":
+  version "0.1.14"
+  resolved "https://registry.yarnpkg.com/@helios-lang/crypto/-/crypto-0.1.14.tgz#4df3af76696c14042a096339c4a9a4bb1c41711a"
+  integrity sha512-86Q+saQoX10RfeAfLXRZt0UTgNmZFREnHnmjGnyKgPYGWNHhVKfn20+k4CDn03Kaa5rIrWh+iN+irsB4+Hv4Mg==
+  dependencies:
+    "@helios-lang/codec-utils" "^0.1.30"
+
+"@helios-lang/era@^0.1.2":
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/@helios-lang/era/-/era-0.1.2.tgz#8d703e36d2c6abcdba205cfdb0b5409ae4e71979"
+  integrity sha512-zthxic/tg/zpnEHX27n1ij/jGpXNq23B/cJRB3ZuTqbD2+54XzcKbqx2INFgGSZJCYBLiKYpmctKFBn+zrNftw==
+
+"@helios-lang/ir@^0.1.34":
+  version "0.1.34"
+  resolved "https://registry.yarnpkg.com/@helios-lang/ir/-/ir-0.1.34.tgz#97d948e9c727a27d7ecf63e0913e9da4ea2b63c1"
+  integrity sha512-8avMIDLqutCAYOfRur+qiIpFxGa3jPkWBi6DFjnr2/hNmBhlThe94bQChj2ohgOBpGFfnCMKkGnNWhHyi/Egtw==
+  dependencies:
+    "@helios-lang/codec-utils" "^0.1.32"
+    "@helios-lang/compiler-utils" "^0.1.53"
+    "@helios-lang/type-utils" "^0.1.20"
+    "@helios-lang/uplc" "^0.3.3"
+
+"@helios-lang/ledger-allegra@^0.1.2":
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/@helios-lang/ledger-allegra/-/ledger-allegra-0.1.2.tgz#46f5e4ff8f4de76483f0662846e260d4ccc2fe70"
+  integrity sha512-ueVqRcawh/X/rO/pi01bul+1I56PyoYoOeoda+J0+OZSnt2IGe00EwXE1LlHftkAO71DjisV2Q7iqf/eqSRwxA==
+  dependencies:
+    "@helios-lang/cbor" "^0.1.21"
+    "@helios-lang/codec-utils" "^0.1.32"
+    "@helios-lang/crypto" "^0.1.9"
+    "@helios-lang/ledger-shelley" "^0.1.3"
+    "@helios-lang/uplc" "^0.3.0"
+
+"@helios-lang/ledger-alonzo@^0.1.5":
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/@helios-lang/ledger-alonzo/-/ledger-alonzo-0.1.5.tgz#d8268cf0c62daae26a9cb6e72cb996d00882041c"
+  integrity sha512-zN+fs+xoHifQqJ0QXYz6qGMFR2hoMGsxuYzlgrXvb1uDfQlJqVDB4ktLtazDy92hfUW+d21z7rJItv5eV5uH5A==
+  dependencies:
+    "@helios-lang/uplc" "^0.1.38"
+
+"@helios-lang/ledger-babbage@^0.2.9":
+  version "0.2.9"
+  resolved "https://registry.yarnpkg.com/@helios-lang/ledger-babbage/-/ledger-babbage-0.2.9.tgz#543e10fd5eef4cd5a50edd1bd74494c300cea0e7"
+  integrity sha512-8EAVhvl8w086ikjc3vci5I4ZKmQTmzPcXKFOk1jd4UL9pP02jcgFI2TDRBPYLkModqHPCRbTtdoKfPNL39sblA==
+  dependencies:
+    "@helios-lang/cbor" "^0.1.21"
+    "@helios-lang/codec-utils" "^0.1.34"
+    "@helios-lang/crypto" "^0.1.9"
+    "@helios-lang/ledger-allegra" "^0.1.2"
+    "@helios-lang/ledger-alonzo" "^0.1.5"
+    "@helios-lang/ledger-shelley" "^0.1.4"
+    "@helios-lang/type-utils" "^0.1.21"
+    "@helios-lang/uplc" "^0.3.3"
+
+"@helios-lang/ledger-conway@^0.1.9":
+  version "0.1.9"
+  resolved "https://registry.yarnpkg.com/@helios-lang/ledger-conway/-/ledger-conway-0.1.9.tgz#03758851e7fec76c9ec8a68c07cab2c5966144e5"
+  integrity sha512-FHiXeydZxJ5UDxKNsu7ANVChTjdg6e7A5IDOqWIWqJQ2st8kC7EuJM0Seh0C3a/aB9bZqXOD5N2uTSlOn2YH7Q==
+  dependencies:
+    "@helios-lang/cbor" "^0.1.21"
+    "@helios-lang/codec-utils" "^0.1.34"
+    "@helios-lang/crypto" "^0.1.14"
+    "@helios-lang/ledger-alonzo" "^0.1.5"
+    "@helios-lang/ledger-babbage" "^0.2.9"
+    "@helios-lang/ledger-shelley" "^0.1.4"
+    "@helios-lang/type-utils" "^0.1.21"
+    "@helios-lang/uplc" "^0.3.3"
+
+"@helios-lang/ledger-shelley@^0.1.3", "@helios-lang/ledger-shelley@^0.1.4":
+  version "0.1.4"
+  resolved "https://registry.yarnpkg.com/@helios-lang/ledger-shelley/-/ledger-shelley-0.1.4.tgz#f49a9fe008dc41fc88349c8f0ba26575b970e26a"
+  integrity sha512-A86U4pVs7gqAc7Y/Um8EkAc/jEDen3I64hYOkA88wfc28gx360foW1F/bBidA7GM4fSBSwnvm5pn26AhLzHrMw==
+  dependencies:
+    "@helios-lang/cbor" "^0.1.21"
+    "@helios-lang/codec-utils" "^0.1.34"
+    "@helios-lang/type-utils" "^0.1.21"
+    "@helios-lang/uplc" "^0.3.0"
+
+"@helios-lang/ledger@^0.4.3", "@helios-lang/ledger@^0.4.8", "@helios-lang/ledger@^0.4.9":
+  version "0.4.9"
+  resolved "https://registry.yarnpkg.com/@helios-lang/ledger/-/ledger-0.4.9.tgz#252113bb1c8c53bfbd8fe8bad953ee36d0949d1b"
+  integrity sha512-ye5qbqiHIsctI5EjDuLbqC48f/rQddnKjJ64eblIe6G0oEDuByZ4BUxYktfu7iioaAXiE4G0yL88DbfAj+2f2g==
+  dependencies:
+    "@helios-lang/ledger-conway" "^0.1.9"
+
+"@helios-lang/tx-utils@^0.1.70":
+  version "0.1.72"
+  resolved "https://registry.yarnpkg.com/@helios-lang/tx-utils/-/tx-utils-0.1.72.tgz#faebd12b6ffec13fa09081e27e1224a09d4e337e"
+  integrity sha512-+43dW7t1KIp9u7nOmlC0lwLCAzeJgYTN1HZRhsM0BilgupXPXdqQEVU1DM8a4mOwvAjg73MYu5RXV19+4VrFFw==
+  dependencies:
+    "@helios-lang/codec-utils" "^0.1.33"
+    "@helios-lang/crypto" "^0.1.9"
+    "@helios-lang/ledger" "^0.4.8"
+    "@helios-lang/ledger-shelley" "^0.1.3"
+    "@helios-lang/type-utils" "^0.1.21"
+    "@helios-lang/uplc" "^0.3.0"
+
+"@helios-lang/type-utils@^0.1.18", "@helios-lang/type-utils@^0.1.20", "@helios-lang/type-utils@^0.1.21":
+  version "0.1.21"
+  resolved "https://registry.yarnpkg.com/@helios-lang/type-utils/-/type-utils-0.1.21.tgz#4b32df74c729b63f97af107576417cd4ef643282"
+  integrity sha512-z12O84kEwVzqYmcYL+SWCaZNIkmF4cDvKFOtL3KiR6pwl8KngqiQk8MnBEyG06FUMKxCSknWayPGIYzM2HcqBw==
+
+"@helios-lang/uplc@^0.1.38":
+  version "0.1.38"
+  resolved "https://registry.yarnpkg.com/@helios-lang/uplc/-/uplc-0.1.38.tgz#575992b91b3f8c1ca4e77da1a1dabedfe62874cd"
+  integrity sha512-WSKLK7AkZDoFiPYu6DwA5oOevd7QljhVHyQCI3CljgX3Wkok/PdO6mPXYHxeA8B7ItnHhx0OXo05uRgakTZNMw==
+  dependencies:
+    "@helios-lang/cbor" "^0.1.21"
+    "@helios-lang/codec-utils" "^0.1.33"
+    "@helios-lang/compiler-utils" "^0.1.54"
+    "@helios-lang/crypto" "^0.1.14"
+    "@helios-lang/era" "^0.1.2"
+    "@helios-lang/type-utils" "^0.1.18"
+
+"@helios-lang/uplc@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@helios-lang/uplc/-/uplc-0.2.0.tgz#682bf416feada71a45a72a554f996dfb04465e62"
+  integrity sha512-ncTb8dV2GM+7T0VopJdP0HgfCGpOJjH4n4mO4HUf+JeOzabCGXarwxQMltUQfcJOE9AYeRDOY78g8T1X54HPjw==
+  dependencies:
+    "@helios-lang/cbor" "^0.1.21"
+    "@helios-lang/codec-utils" "^0.1.33"
+    "@helios-lang/compiler-utils" "^0.1.54"
+    "@helios-lang/crypto" "^0.1.14"
+    "@helios-lang/era" "^0.1.2"
+    "@helios-lang/type-utils" "^0.1.18"
+
+"@helios-lang/uplc@^0.3.0", "@helios-lang/uplc@^0.3.3", "@helios-lang/uplc@^0.3.5":
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/@helios-lang/uplc/-/uplc-0.3.5.tgz#d42c0cb58f2c1c7434d27495a2a3ae02aca0e01b"
+  integrity sha512-agxmNqMW+PzTk9FwKyB4iLPEy3+udI1IZ2kPlbRr/5CMiFY7DWDzTSAv29jYa+vKE/CB0I+t00Mk5Z63PuNnmg==
+  dependencies:
+    "@helios-lang/cbor" "^0.1.21"
+    "@helios-lang/codec-utils" "^0.1.33"
+    "@helios-lang/compiler-utils" "^0.1.54"
+    "@helios-lang/crypto" "^0.1.14"
+    "@helios-lang/era" "^0.1.2"
+    "@helios-lang/type-utils" "^0.1.18"
+
 "@humanwhocodes/config-array@^0.11.10":
   version "0.11.10"
   resolved "https://registry.yarnpkg.com/@humanwhocodes/config-array/-/config-array-0.11.10.tgz#5a3ffe32cc9306365fb3fd572596cd602d5e12d2"
@@ -167,11 +369,6 @@
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/@humanwhocodes/object-schema/-/object-schema-1.2.1.tgz#b520529ec21d8e5945a1851dfd1c32e94e39ff45"
   integrity sha512-ZnQMnLV4e7hDlUvw8H+U8ASL02SS2Gn6+9Ac3wGGLIe7+je2AeAOxPY+izIPJDfFDb7eDjev0Us8MO1iFRN8hA==
-
-"@hyperionbt/helios@^0.15.11":
-  version "0.15.11"
-  resolved "https://registry.yarnpkg.com/@hyperionbt/helios/-/helios-0.15.11.tgz#53868aef9231a7bf009d3dd14fd8cf17f22dd30b"
-  integrity sha512-Dr48bPRTTsmrhlrtNFWg0HK6i59A2matsPrQimu3a6VhaAsXp1Sc3uYQGYyPJPa4eN72hxDC6QBCMnDOpqbBsA==
 
 "@jest/schemas@^29.6.0":
   version "29.6.0"

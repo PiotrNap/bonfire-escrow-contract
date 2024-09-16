@@ -123,12 +123,12 @@ func main(datum: Datum, redeemer: Redeemer) -> Bool {
            .trace("9") &&
 
            (tx.value_sent_to(treasuryPkh) == serviceFee)
-           .trace("10 " + serviceFee.show())
+           .trace("10")
         },
         Recycle => {
            (tx.is_signed_by(treasuryPkh)).trace("11") &&
 
-           (now > datum.createdAt + oneYearTime).trace("12")
+           (now > datum.createdAt + oneYearTime).trace("12 " + now.show() + " " + datum.createdAt.show() + " " + oneYearTime.show())
         }
     }
 }

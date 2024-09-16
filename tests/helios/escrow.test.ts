@@ -182,13 +182,13 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
       )
 
       const escrowDatum = contractContext.escrow_contract.Datum.toUplcData({
-        beneficiaryPkh: beneficiary.spendingPubKeyHash, // beneficiaryPkh
-        benefactorPkh: benefactor.spendingPubKeyHash, // benefactorPkh
-        releaseDate: BigInt(Math.floor(releaseDate.getTime())), // releaseDate
-        cancelFee: 20, // cancelFee %
-        cancelWindowStart: BigInt(Math.floor(cancelWindowStart.getTime())), // cancelWindowStart
-        cancelWindowEnd: BigInt(Math.floor(cancelWindowEnd.getTime())), // cancelWindowEnd
-        createdAt: BigInt(Math.floor(createdAt.getTime())), // createdAt
+        beneficiaryPkh: beneficiary.spendingPubKeyHash,
+        benefactorPkh: benefactor.spendingPubKeyHash,
+        releaseDate: BigInt(Math.floor(releaseDate.getTime())),
+        cancelFee: 20,
+        cancelWindowStart: BigInt(Math.floor(cancelWindowStart.getTime())),
+        cancelWindowEnd: BigInt(Math.floor(cancelWindowEnd.getTime())),
+        createdAt: BigInt(Math.floor(createdAt.getTime())),
         paymentTokens: paymentTokensValue.toUplcData().toSchemaJson(),
       })
       const inlineDatum = Datum.Inline(escrowDatum)
@@ -274,18 +274,18 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
       beneficiaryUtxos = await network.getUtxos(beneficiary.address)
       let treasuryUtxos = await network.getUtxos(treasury.address)
 
-      console.log(
-        1,
-        benefactorUtxos.map((u) => JSON.stringify(u.dump())),
-      )
-      console.log(
-        2,
-        beneficiaryUtxos.map((u) => JSON.stringify(u.dump())),
-      )
-      console.log(
-        3,
-        treasuryUtxos.map((u) => JSON.stringify(u.dump())),
-      )
+      // console.log(
+      //   1,
+      //   benefactorUtxos.map((u) => JSON.stringify(u.dump())),
+      // )
+      // console.log(
+      //   2,
+      //   beneficiaryUtxos.map((u) => JSON.stringify(u.dump())),
+      // )
+      // console.log(
+      //   3,
+      //   treasuryUtxos.map((u) => JSON.stringify(u.dump())),
+      // )
 
       // contract to have no UTxOs
       expect(escrowUtxos.length).toBe(0)
@@ -319,16 +319,16 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
         scriptTime + oneHourMilSec + oneHourMilSec / 2,
       )
 
-      const escrowDatum = new escrowProgram.types.Datum(
-        beneficiary.pubKeyHash.hex, // beneficiaryPkh
-        benefactor.pubKeyHash.hex, // benefactorPkh
-        BigInt(Math.floor(releaseDate.getTime())), // releaseDate
-        20, // cancelFee %
-        BigInt(Math.floor(cancelWindowStart.getTime())), // cancelWindowStart
-        BigInt(Math.floor(cancelWindowEnd.getTime())), // cancelWindowEnd
-        BigInt(Math.floor(createdAt.getTime())), // createdAt
-        paymentTokensValue,
-      )
+      const escrowDatum = contractContext.escrow_contract.Datum.toUplcData({
+        beneficiaryPkh: beneficiary.spendingPubKeyHash,
+        benefactorPkh: benefactor.spendingPubKeyHash,
+        releaseDate: BigInt(Math.floor(releaseDate.getTime())),
+        cancelFee: 20,
+        cancelWindowStart: BigInt(Math.floor(cancelWindowStart.getTime())),
+        cancelWindowEnd: BigInt(Math.floor(cancelWindowEnd.getTime())),
+        createdAt: BigInt(Math.floor(createdAt.getTime())),
+        paymentTokens: paymentTokensValue.toUplcData().toSchemaJson(),
+      })
 
       network.createUtxo(benefactor, BigInt(100_000_000), paymentTokenAssets)
       network.createUtxo(beneficiary, 5_000_000n, betaTesterToken)
@@ -338,46 +338,61 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
       let benefactorUtxos = await benefactor.utxos
       let beneficiaryUtxos = await beneficiary.utxos
 
-      const inlineDatum = Datum.inline(escrowDatum)
+      const inlineDatum = Datum.Inline(escrowDatum)
 
       // lock funds
-      const lockingTx = new Tx()
-        .addInputs(benefactorUtxos)
-        .addOutputs([
-          new TxOutput(scriptAddress, paymentTokensValue, inlineDatum),
-        ])
-      await lockingTx.finalize(networkParams, benefactor.address)
-      await network.submitTx(lockingTx)
+      const lockingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .spend(benefactorUtxos)
+        .payUnsafe(scriptAddress, paymentTokensValue, inlineDatum)
+
+      const readyLockingTx = await lockingTx.build({
+        networkParams,
+        changeAddress: benefactor.address,
+        spareUtxos: benefactor.utxos,
+      })
+
+      let sign = await benefactor.signTx(readyLockingTx)
+      readyLockingTx.addSignatures(sign)
+
+      await network.submitTx(readyLockingTx)
       network.tick(BigInt(releaseDate.getTime() + oneMinuteMilSec))
 
       // unlock funds
       benefactorUtxos = await benefactor.utxos
       beneficiaryUtxos = await beneficiary.utxos
-      const params = await network.getParameters()
 
       let escrowUtxos = await network.getUtxos(scriptAddress)
-      const escrowTxIds = escrowUtxos.map((utxo) => utxo.outputId)
+      const escrowTxIds = escrowUtxos.map((utxo) => utxo.id)
 
-      const txOutId = new escrowProgram.types.TxOutId(
-        escrowTxIds[0].txId.hex,
-        escrowTxIds[0].utxoIdx,
-      )
-      const redeemer = new escrowProgram.types.Redeemer.Complete([txOutId])
+      const txOutId = {
+        txId: escrowTxIds[0].txId.toHex(),
+        utxoIdx: escrowTxIds[0].utxoIdx,
+      }
+      const redeemer = contractContext.escrow_contract.Redeemer.toUplcData({
+        Complete: {
+          txOutIds: [txOutId],
+        },
+      })
+      const params = await network.parameters
 
-      if (!params.liveSlot) throw new Error("Missing live slot")
-      const unlockingTx = new Tx()
-        .attachScript(escrowProgramCompiled)
-        .addInputs(beneficiaryUtxos)
-        .addInputs([escrowUtxos[0]], redeemer)
-        .validFrom(params.liveSlot)
-        .validTo(params.liveSlot + BigInt(10))
-        .addSigner(beneficiary.pubKeyHash)
-        .addOutput(
-          new TxOutput(beneficiary.address, paymentTokensValue, inlineDatum),
-        )
+      const unlockingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .attachUplcProgram(escrowProgram)
+        .spend(beneficiaryUtxos)
+        .spendUnsafe([escrowUtxos[0]], redeemer)
+        .validFromSlot(params.refTipSlot)
+        .validToSlot(params.refTipSlot + 10)
+        .addSigners(beneficiary.spendingPubKeyHash)
+        .payUnsafe(beneficiary.address, paymentTokensValue, inlineDatum)
 
-      await unlockingTx.finalize(networkParams, beneficiary.address)
-      await network.submitTx(unlockingTx)
+      const readyUnlockingTx = await unlockingTx.build({
+        networkParams,
+        changeAddress: beneficiary.address,
+        spareUtxos: beneficiary.utxos,
+      })
+
+      sign = await beneficiary.signTx(readyUnlockingTx)
+      readyUnlockingTx.addSignatures(sign)
+      await network.submitTx(readyUnlockingTx)
       network.tick(BigInt(1))
 
       escrowUtxos = await network.getUtxos(scriptAddress)
@@ -390,8 +405,8 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
 
       // - beneficiary to have the UTxO with the right amount of payment tokens
       expect(
-        beneficiaryUtxos.find(
-          (txInput) => txInput.value === paymentTokensValue,
+        beneficiaryUtxos.find((txInput) =>
+          txInput.value.isEqual(paymentTokensValue),
         ),
       ).toBeTruthy()
 
@@ -414,16 +429,16 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
         scriptTime + oneHourMilSec + oneHourMilSec / 2,
       )
 
-      const escrowDatum = new escrowProgram.types.Datum(
-        beneficiary.pubKeyHash.hex, // beneficiaryPkh
-        benefactor.pubKeyHash.hex, // benefactorPkh
-        BigInt(Math.floor(releaseDate.getTime())), // releaseDate
-        20, // cancelFee %
-        BigInt(Math.floor(cancelWindowStart.getTime())), // cancelWindowStart
-        BigInt(Math.floor(cancelWindowEnd.getTime())), // cancelWindowEnd
-        BigInt(Math.floor(createdAt.getTime())), // createdAt
-        paymentTokensValue,
-      )
+      const escrowDatum = contractContext.escrow_contract.Datum.toUplcData({
+        beneficiaryPkh: beneficiary.spendingPubKeyHash,
+        benefactorPkh: benefactor.spendingPubKeyHash,
+        releaseDate: BigInt(Math.floor(releaseDate.getTime())),
+        cancelFee: 20,
+        cancelWindowStart: BigInt(Math.floor(cancelWindowStart.getTime())),
+        cancelWindowEnd: BigInt(Math.floor(cancelWindowEnd.getTime())),
+        createdAt: BigInt(Math.floor(createdAt.getTime())),
+        paymentTokens: paymentTokensValue.toUplcData().toSchemaJson(),
+      })
 
       network.createUtxo(benefactor, BigInt(100_000_000), paymentTokenAssets)
       network.tick(1n)
@@ -431,46 +446,61 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
       let benefactorUtxos = await benefactor.utxos
       let beneficiaryUtxos = await beneficiary.utxos
 
-      const inlineDatum = Datum.inline(escrowDatum)
+      const inlineDatum = Datum.Inline(escrowDatum)
       const cancellationFee = calculateCancellationFee(paymentLovelace, 20)
 
       // lock funds
-      const lockingTx = new Tx()
-        .addInputs(benefactorUtxos)
-        .addOutputs([
-          new TxOutput(scriptAddress, paymentTokensValue, inlineDatum),
-        ])
-      await lockingTx.finalize(networkParams, benefactor.address)
-      await network.submitTx(lockingTx)
+      const lockingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .spend(benefactorUtxos)
+        .payUnsafe(scriptAddress, paymentTokensValue, inlineDatum)
+      const readyTx = await lockingTx.build({
+        networkParams,
+        changeAddress: benefactor.address,
+        spareUtxos: benefactor.utxos,
+      })
+      let sign = await benefactor.signTx(readyTx)
+      readyTx.addSignatures(sign)
+
+      await network.submitTx(readyTx)
       network.tick(BigInt(100))
 
       // unlock funds
       benefactorUtxos = await benefactor.utxos
       beneficiaryUtxos = await beneficiary.utxos
-      const params = await network.getParameters()
+      const params = await network.parameters
 
       let escrowUtxos = await network.getUtxos(scriptAddress)
-      const escrowTxIds = escrowUtxos.map((utxo) => utxo.outputId)
 
-      const txId = escrowTxIds[0].txId.hex
-      const utxoIdx = escrowTxIds[0].utxoIdx
-      const redeemer = new escrowProgram.types.Redeemer.Cancel(txId, utxoIdx)
+      const txId = escrowUtxos[0].id.txId
+      const utxoIdx = escrowUtxos[0].id.utxoIdx
+      const redeemer = contractContext.escrow_contract.Redeemer.toUplcData({
+        Cancel: {
+          txId,
+          utxoIdx,
+        },
+      })
 
-      if (!params.liveSlot) throw new Error("Missing live slot")
-      const unlockingTx = new Tx()
-        .attachScript(escrowProgramCompiled)
-        .addInputs(benefactorUtxos)
-        .addInputs([escrowUtxos[0]], redeemer)
-        .validFrom(params.liveSlot)
-        .validTo(params.liveSlot + BigInt(10))
-        .addSigner(benefactor.pubKeyHash)
-        .addOutputs([
+      const unlockingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .attachUplcProgram(escrowProgram)
+        .spend(benefactorUtxos)
+        .spendUnsafe([escrowUtxos[0]], redeemer)
+        .validFromSlot(params.refTipSlot)
+        .validToSlot(params.refTipSlot + 10)
+        .addSigners(benefactor.spendingPubKeyHash)
+        .payUnsafe([
           new TxOutput(benefactor.address, paymentTokensValue, inlineDatum),
           new TxOutput(beneficiary.address, cancellationFee),
         ])
 
-      await unlockingTx.finalize(networkParams, benefactor.address)
-      await network.submitTx(unlockingTx)
+      const readyUnlockingTx = await unlockingTx.build({
+        networkParams,
+        changeAddress: benefactor.address,
+        spareUtxos: benefactor.utxos,
+      })
+      sign = await benefactor.signTx(readyUnlockingTx)
+      readyUnlockingTx.addSignatures(sign)
+      await network.submitTx(readyUnlockingTx)
+
       network.tick(BigInt(1))
 
       escrowUtxos = await network.getUtxos(scriptAddress)
@@ -483,11 +513,13 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
 
       // beneficiary to have the UTxO with the right amount of payment tokens
       expect(
-        benefactorUtxos.find((txInput) => txInput.value === paymentTokensValue),
+        benefactorUtxos.find((txInput) =>
+          txInput.value.isEqual(paymentTokensValue),
+        ),
       ).toBeTruthy()
 
       // benefactor to have a utxo with the cancellation fee
-      expect(beneficiaryUtxos[0].value === cancellationFee).toBeTruthy()
+      expect(beneficiaryUtxos[0].value.isEqual(cancellationFee)).toBeTruthy()
 
       // treasury to have none funds
       expect(treasuryUtxos.length).toBe(0)
@@ -508,93 +540,110 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
         scriptTime + oneHourMilSec + oneHourMilSec / 2,
       )
 
-      const escrowDatum = new escrowProgram.types.Datum(
-        beneficiary.pubKeyHash.hex, // beneficiaryPkh
-        benefactor.pubKeyHash.hex, // benefactorPkh
-        BigInt(Math.floor(releaseDate.getTime())), // releaseDate
-        20, // cancelFee %
-        BigInt(Math.floor(cancelWindowStart.getTime())), // cancelWindowStart
-        BigInt(Math.floor(cancelWindowEnd.getTime())), // cancelWindowEnd
-        BigInt(Math.floor(createdAt.getTime())), // createdAt
-        paymentTokensValue,
-      )
-
+      const escrowDatum = contractContext.escrow_contract.Datum.toUplcData({
+        beneficiaryPkh: beneficiary.spendingPubKeyHash,
+        benefactorPkh: benefactor.spendingPubKeyHash,
+        releaseDate: BigInt(Math.floor(releaseDate.getTime())),
+        cancelFee: 20,
+        cancelWindowStart: BigInt(Math.floor(cancelWindowStart.getTime())),
+        cancelWindowEnd: BigInt(Math.floor(cancelWindowEnd.getTime())),
+        createdAt: BigInt(Math.floor(createdAt.getTime())),
+        paymentTokens: paymentTokensValue.toUplcData().toSchemaJson(),
+      })
       network.createUtxo(benefactor, BigInt(100_000_000), paymentTokenAssets)
       network.tick(1n)
 
       let benefactorUtxos = await benefactor.utxos
       let beneficiaryUtxos = await beneficiary.utxos
 
-      const inlineDatum = Datum.inline(escrowDatum)
+      const inlineDatum = Datum.Inline(escrowDatum)
       const cancellationFee = calculateCancellationFee(paymentLovelace, 20)
 
       // lock funds
-      const lockingTx = new Tx()
-        .addInputs(benefactorUtxos)
-        .addOutputs([
+      const lockingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .spend(benefactorUtxos)
+        .payUnsafe([
           new TxOutput(scriptAddress, paymentTokensValue, inlineDatum),
         ])
-      await lockingTx.finalize(networkParams, benefactor.address)
-      await network.submitTx(lockingTx)
+      const readyLockingTx = await lockingTx.build({
+        networkParams,
+        changeAddress: benefactor.address,
+        spareUtxos: benefactor.utxos,
+      })
+      let sign = await benefactor.signTx(readyLockingTx)
+      readyLockingTx.addSignatures(sign)
+
+      await network.submitTx(readyLockingTx)
       network.tick(BigInt(cancelWindowEnd.getTime() + oneMinuteMilSec))
 
       // unlock funds
       benefactorUtxos = await benefactor.utxos
       beneficiaryUtxos = await beneficiary.utxos
-      const params = await network.getParameters()
+      const params = await network.parameters
 
-      let escrowUtxos = await network.getUtxos(scriptAddress)
-      const escrowTxIds = escrowUtxos.map((utxo) => utxo.outputId)
+      const escrowUtxos = await network.getUtxos(scriptAddress)
 
-      const txId = escrowTxIds[0].txId.hex
-      const utxoIdx = escrowTxIds[0].utxoIdx
-      const cancelRedeemer = new escrowProgram.types.Redeemer.Cancel(
-        txId,
-        utxoIdx,
-      )
+      const txId = escrowUtxos[0].id.txId
+      const utxoIdx = escrowUtxos[0].id.utxoIdx
+      const redeemer = contractContext.escrow_contract.Redeemer.toUplcData({
+        Cancel: {
+          txId,
+          utxoIdx,
+        },
+      })
 
-      if (!params.liveSlot) throw new Error("Missing live slot")
-      const cancellingTx = new Tx()
-        .attachScript(escrowProgramCompiled)
-        .addInputs(benefactorUtxos)
-        .addInputs([escrowUtxos[0]], cancelRedeemer)
-        .validFrom(params.liveSlot)
-        .validTo(params.liveSlot + BigInt(10))
-        .addSigner(benefactor.pubKeyHash)
-        .addOutputs([
+      const cancellingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .attachUplcProgram(escrowProgram)
+        .spend(benefactorUtxos)
+        .spendUnsafe([escrowUtxos[0]], redeemer)
+        .validFromSlot(params.refTipSlot)
+        .validToSlot(params.refTipSlot + 10)
+        .addSigners(benefactor.spendingPubKeyHash)
+        .payUnsafe([
           new TxOutput(benefactor.address, paymentTokensValue, inlineDatum),
-          new TxOutput(beneficiary.address, new Value(cancellationFee)),
+          new TxOutput(beneficiary.address, cancellationFee),
         ])
 
       // should fail on off-chain evaluation due to cancellation date being passed
       await expect(() =>
-        cancellingTx.finalize(networkParams, benefactor.address),
+        cancellingTx.build({
+          networkParams,
+          changeAddress: benefactor.address,
+          spareUtxos: benefactor.utxos,
+        }),
       ).rejects.toThrowError()
 
       network.tick(1n)
 
-      const txOutId = new escrowProgram.types.TxOutId(
-        escrowTxIds[0].txId.hex,
-        escrowTxIds[0].utxoIdx,
-      )
-      const withdrawRedeemer = new escrowProgram.types.Redeemer.Complete([
-        txOutId,
-      ])
-      const withdrawingTx = new Tx()
-        .attachScript(escrowProgramCompiled)
-        .addInputs(beneficiaryUtxos)
-        .addInputs([escrowUtxos[0]], withdrawRedeemer)
-        .validFrom(params.liveSlot)
-        .validTo(params.liveSlot + BigInt(10))
-        .addSigner(benefactor.pubKeyHash)
-        .addOutputs([
+      const txOutId = {
+        txId: escrowUtxos[0].id.txId.toHex(),
+        utxoIdx: escrowUtxos[0].id.utxoIdx,
+      }
+      const withdrawRedeemer =
+        contractContext.escrow_contract.Redeemer.toUplcData({
+          Complete: {
+            txOutIds: [txOutId],
+          },
+        })
+
+      const withdrawingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .attachUplcProgram(escrowProgram)
+        .spend(beneficiaryUtxos)
+        .spendUnsafe([escrowUtxos[0]], withdrawRedeemer)
+        .validFromSlot(params.refTipSlot)
+        .validToSlot(params.refTipSlot + 10)
+        .addSigners(benefactor.spendingPubKeyHash)
+        .payUnsafe([
           new TxOutput(benefactor.address, paymentTokensValue, inlineDatum),
-          new TxOutput(beneficiary.address, new Value(cancellationFee)),
+          new TxOutput(beneficiary.address, cancellationFee),
         ])
 
       // should fail on off-chain evaluation due to too early date for a release
       await expect(() =>
-        withdrawingTx.finalize(networkParams, benefactor.address),
+        withdrawingTx.build({
+          networkParams,
+          changeAddress: benefactor.address,
+        }),
       ).rejects.toThrowError()
     })
 
@@ -614,16 +663,16 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
 
       const outsideParty = network.createWallet(5_000_000n)
 
-      const escrowDatum = new escrowProgram.types.Datum(
-        beneficiary.pubKeyHash.hex, // beneficiaryPkh
-        benefactor.pubKeyHash.hex, // benefactorPkh
-        BigInt(Math.floor(releaseDate.getTime())), // releaseDate
-        20, // cancelFee %
-        BigInt(Math.floor(cancelWindowStart.getTime())), // cancelWindowStart
-        BigInt(Math.floor(cancelWindowEnd.getTime())), // cancelWindowEnd
-        BigInt(Math.floor(createdAt.getTime())), // createdAt
-        paymentTokensValue,
-      )
+      const escrowDatum = contractContext.escrow_contract.Datum.toUplcData({
+        beneficiaryPkh: beneficiary.spendingPubKeyHash,
+        benefactorPkh: benefactor.spendingPubKeyHash,
+        releaseDate: BigInt(Math.floor(releaseDate.getTime())),
+        cancelFee: 20,
+        cancelWindowStart: BigInt(Math.floor(cancelWindowStart.getTime())),
+        cancelWindowEnd: BigInt(Math.floor(cancelWindowEnd.getTime())),
+        createdAt: BigInt(Math.floor(createdAt.getTime())),
+        paymentTokens: paymentTokensValue.toUplcData().toSchemaJson(),
+      })
 
       network.createUtxo(benefactor, BigInt(100_000_000), paymentTokenAssets)
       network.tick(1n)
@@ -631,48 +680,58 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
       let benefactorUtxos = await benefactor.utxos
       let beneficiaryUtxos = await beneficiary.utxos
 
-      const inlineDatum = Datum.inline(escrowDatum)
+      const inlineDatum = Datum.Inline(escrowDatum)
 
       // lock funds
-      const lockingTx = new Tx()
-        .addInputs(benefactorUtxos)
-        .addOutputs([
+      const lockingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .spend(benefactorUtxos)
+        .payUnsafe([
           new TxOutput(scriptAddress, paymentTokensValue, inlineDatum),
         ])
-      await lockingTx.finalize(networkParams, benefactor.address)
-      await network.submitTx(lockingTx)
+      const readyLockingTx = await lockingTx.build({
+        networkParams,
+        changeAddress: benefactor.address,
+      })
+      let sign = await benefactor.signTx(readyLockingTx)
+      readyLockingTx.addSignatures(sign)
+
+      await network.submitTx(readyLockingTx)
       network.tick(BigInt(100))
 
       // unlock funds
       benefactorUtxos = await benefactor.utxos
       beneficiaryUtxos = await beneficiary.utxos
-      const params = await network.getParameters()
+      const params = await network.parameters
 
       let escrowUtxos = await network.getUtxos(scriptAddress)
-      const escrowTxIds = escrowUtxos.map((utxo) => utxo.outputId)
-      if (!params.liveSlot) throw new Error("Missing live slot")
 
-      const txOutId = new escrowProgram.types.TxOutId(
-        escrowTxIds[0].txId.hex,
-        escrowTxIds[0].utxoIdx,
-      )
-      const withdrawRedeemer = new escrowProgram.types.Redeemer.Complete([
-        txOutId,
-      ])
-      const withdrawingTx = new Tx()
-        .attachScript(escrowProgramCompiled)
-        .addInputs(beneficiaryUtxos)
-        .addInputs([escrowUtxos[0]], withdrawRedeemer)
-        .validFrom(params.liveSlot)
-        .validTo(params.liveSlot + BigInt(10))
-        .addSigner(outsideParty.pubKeyHash)
-        .addOutputs([
+      const txOutId = {
+        txId: escrowUtxos[0].id.txId.toHex(),
+        utxoIdx: escrowUtxos[0].id.utxoIdx,
+      }
+      const withdrawRedeemer =
+        contractContext.escrow_contract.Redeemer.toUplcData({
+          Complete: {
+            txOutIds: [txOutId],
+          },
+        })
+      const withdrawingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .attachUplcProgram(escrowProgram)
+        .spend(beneficiaryUtxos)
+        .spendUnsafe([escrowUtxos[0]], withdrawRedeemer)
+        .validFromSlot(params.refTipSlot)
+        .validToSlot(params.refTipSlot + 10)
+        .addSigners(outsideParty.spendingPubKeyHash)
+        .payUnsafe([
           new TxOutput(outsideParty.address, paymentTokensValue, inlineDatum),
         ])
 
       // should fail on off-chain evaluation due to tx being signed by an outside party
       await expect(() =>
-        withdrawingTx.finalize(networkParams, outsideParty.address),
+        withdrawingTx.build({
+          networkParams,
+          changeAddress: outsideParty.address,
+        }),
       ).rejects.toThrowError()
     })
 
@@ -683,24 +742,24 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
       beneficiary,
       treasury,
     }: CustomContext) => {
+      let params = await network.parameters
+      let currTime = params.refTipTime
       /** Locking Datum **/
-      const createdAt = new Date(scriptTime - oneHourMilSec)
-      const cancelWindowStart = new Date(scriptTime - oneHourMilSec / 2)
-      const cancelWindowEnd = new Date(scriptTime + oneHourMilSec)
-      const releaseDate = new Date(
-        scriptTime + oneHourMilSec + oneHourMilSec / 2,
-      )
+      const createdAt = new Date(currTime - oneHourMilSec)
+      const cancelWindowStart = new Date(currTime - oneHourMilSec / 2)
+      const cancelWindowEnd = new Date(currTime + oneHourMilSec)
+      const releaseDate = new Date(currTime + oneHourMilSec + oneHourMilSec / 2)
 
-      const escrowDatum = new escrowProgram.types.Datum(
-        // .pubKeyHash.hex, // beneficiaryPkh
-        beneficiary.benefactor.pubKeyHash.hex, // benefactorPkh
-        BigInt(Math.floor(releaseDate.getTime())), // releaseDate
-        20, // cancelFee %
-        BigInt(Math.floor(cancelWindowStart.getTime())), // cancelWindowStart
-        BigInt(Math.floor(cancelWindowEnd.getTime())), // cancelWindowEnd
-        BigInt(Math.floor(createdAt.getTime())), // createdAt
-        paymentTokensValue,
-      )
+      const escrowDatum = contractContext.escrow_contract.Datum.toUplcData({
+        beneficiaryPkh: beneficiary.spendingPubKeyHash,
+        benefactorPkh: benefactor.spendingPubKeyHash,
+        releaseDate: BigInt(Math.floor(releaseDate.getTime())),
+        cancelFee: 20,
+        cancelWindowStart: BigInt(Math.floor(cancelWindowStart.getTime())),
+        cancelWindowEnd: BigInt(Math.floor(cancelWindowEnd.getTime())),
+        createdAt: BigInt(Math.floor(createdAt.getTime())),
+        paymentTokens: paymentTokensValue.toUplcData().toSchemaJson(),
+      })
 
       network.createUtxo(benefactor, BigInt(100_000_000), paymentTokenAssets)
       network.createUtxo(treasury, BigInt(5_000_000))
@@ -708,64 +767,70 @@ describe("Escrow contract with 3 actions: Cancel, Complete, Recycle", async () =
 
       let benefactorUtxos = await benefactor.utxos
 
-      const inlineDatum = Datum.inline(escrowDatum)
+      const inlineDatum = Datum.Inline(escrowDatum)
 
       // lock funds
-      const lockingTx = new Tx()
-        .addInputs(benefactorUtxos)
-        .addOutputs([
+      const lockingTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .spend(benefactorUtxos)
+        .payUnsafe([
           new TxOutput(scriptAddress, paymentTokensValue, inlineDatum),
         ])
-      await lockingTx.finalize(networkParams, benefactor.address)
-      await network.submitTx(lockingTx)
+      const readyLockingTx = await lockingTx.build({
+        networkParams,
+        changeAddress: benefactor.address,
+      })
+      let sign = await benefactor.signTx(readyLockingTx)
+      readyLockingTx.addSignatures(sign)
+      await network.submitTx(readyLockingTx)
 
       // 6 months have passed...
-      network.tick(BigInt(oneYearMilSec / 1000 / 2))
+      const sixMonths = oneYearMilSec / 2
+      network.tick(BigInt(sixMonths / 1000)) // converting to seconds...
+
+      const newParams = await network.parameters
+      currTime = newParams.refTipTime
 
       // unlock funds
-      let params = await network.getParameters()
 
       let treasuryUtxos = await network.getUtxos(treasury.address)
       const escrowUtxos = await network.getUtxos(scriptAddress)
-      if (!params.liveSlot) throw new Error("Missing live slot")
 
-      const recycleRedeemer = new escrowProgram.types.Redeemer.Recycle()
-      let recycleTx = new Tx()
-        .attachScript(escrowProgramCompiled)
-        .addInputs(treasuryUtxos)
-        .addInputs([escrowUtxos[0]], recycleRedeemer)
-        .validFrom(params.liveSlot)
-        .validTo(params.liveSlot + BigInt(10))
-        .addSigner(treasury.pubKeyHash)
+      const recycleRedeemer =
+        contractContext.escrow_contract.Redeemer.toUplcData({ Recycle: {} })
+
+      let recycleTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .attachUplcProgram(escrowProgram)
+        .spend(treasuryUtxos)
+        .spendUnsafe([escrowUtxos[0]], recycleRedeemer)
+        .validFromTime(currTime)
+        .validToTime(currTime + 60 * 1000)
+        .addSigners(treasury.spendingPubKeyHash)
 
       // should throw an error, if it doesn't something is wrong.
       await expect(() =>
-        recycleTx.finalize(networkParams, treasury.address),
+        recycleTx.build({ networkParams, changeAddress: treasury.address }),
       ).rejects.toThrowError()
 
       // wait another 6 months... and 1 sec :)
-      network.tick(BigInt(oneYearMilSec / 1000 / 2))
-      network.tick(1n)
-      params = await network.getParameters()
-      if (!params.liveSlot) throw new Error("Missing live slot")
 
-      recycleTx = new Tx()
-        .attachScript(escrowProgramCompiled)
-        .addInputs(treasuryUtxos)
-        .addInputs([escrowUtxos[0]], recycleRedeemer)
-        .validFrom(params.liveSlot)
-        .validTo(params.liveSlot + BigInt(10))
-        .addOutputs([new TxOutput(treasury.address, paymentTokensValue)])
-        .addSigner(treasury.pubKeyHash)
+      network.tick(BigInt(sixMonths / 1000))
+      network.tick(BigInt(1))
 
-      await recycleTx.finalize(networkParams, treasury.address)
-      await network.submitTx(recycleTx)
-      network.tick(10n)
+      params = await network.parameters
+      currTime = params.refTipTime
 
-      treasuryUtxos = await network.getUtxos(treasury.address)
-      expect(
-        treasuryUtxos.find((txIn) => txIn.value == paymentTokensValue),
-      ).toBeTruthy()
+      recycleTx = new TxBuilder({ isMainnet: network.isMainnet() })
+        .attachUplcProgram(escrowProgram)
+        .spend(treasuryUtxos)
+        .spendUnsafe([escrowUtxos[0]], recycleRedeemer)
+        .validFromTime(currTime)
+        .validToTime(currTime + 60 * 1000)
+        .payUnsafe([new TxOutput(treasury.address, paymentTokensValue)])
+        .addSigners(treasury.spendingPubKeyHash)
+
+      expect(() =>
+        recycleTx.build({ networkParams, changeAddress: treasury.address }),
+      ).not.rejects
     })
   } catch (e) {
     console.error(e)
